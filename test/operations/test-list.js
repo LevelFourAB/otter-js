@@ -190,6 +190,42 @@ describe('List OT', function() {
 			);
 		});
 	});
+
+	describe('serialization', function() {
+		it('#1', function() {
+
+			const op = list.delta()
+				.retain(2)
+				.insert('Hey!')
+				.delete([])
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#2', function() {
+
+			const op = list.delta()
+				.insert(null)
+				.insert('one')
+				.insert('two')
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#5', function() {
+
+			const op = list.delta()
+				.retain(2)
+				.insert('Hey!')
+				.delete([])
+				.done();
+
+			const json = JSON.parse('[["retain",2],["insert",["Hey!"]],["delete",[[]]]]');
+			expect(type.fromJSON(json)).to.deep.equal(op);
+		});
+	});
 });
 
 function opRetain(i) {

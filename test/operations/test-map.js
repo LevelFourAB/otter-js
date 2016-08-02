@@ -249,4 +249,54 @@ describe('Map OT', function() {
 			);
 		});
 	});
+
+	describe('serialization', function() {
+		it('#1', function() {
+
+			const op = map.delta()
+				.set('abc', null, 'Cookies')
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#2', function() {
+
+			const op = map.delta()
+				.set('abc', 'Cookies', null)
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#3', function() {
+
+			const op = map.delta()
+				.set('abc', null, [])
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#4', function() {
+
+			const op = map.delta()
+				.set('abc', null, [])
+				.set('def', null, 'Cookies')
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#5', function() {
+
+			const op = map.delta()
+				.set('abc', null, [])
+				.set('def', null, 'Cookies')
+				.done();
+
+			const json = JSON.parse('[["set",{"key":"abc","newValue":[]}],["set",{"key":"def","newValue":"Cookies"}]]');
+			expect(type.fromJSON(json)).to.deep.equal(op);
+		});
+	});
 });

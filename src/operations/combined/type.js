@@ -8,6 +8,7 @@ const list = require('../list');
 
 const compose = require('./compose');
 const transform = require('./transform');
+const serialization = require('./serialization');
 
 class CombinedType extends OTType {
 	constructor() {
@@ -39,6 +40,14 @@ class CombinedType extends OTType {
 
 	transform(left, right) {
 		return transform(this.types, left, right);
+	}
+
+	toJSON(op) {
+		return serialization.toJSON(this.types, op);
+	}
+
+	fromJSON(json) {
+		return serialization.fromJSON(this.types, json);
 	}
 }
 

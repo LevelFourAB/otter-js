@@ -292,6 +292,30 @@ describe('String OT', function() {
 			);
 		});
 	});
+
+	describe('serialization', function() {
+		it('#1', function() {
+
+			const op = string.delta()
+				.retain(2)
+				.insert('\'ello World')
+				.delete('Cookie')
+				.done();
+
+			expect(type.fromJSON(type.toJSON(op))).to.deep.equal(op);
+		});
+
+		it('#2', function() {
+
+			const op = string.delta()
+				.retain(2)
+				.insert('Hello World')
+				.delete('Cookie')
+				.done();
+
+			expect(type.fromJSON("__2;++'Hello World';--'Cookie';")).to.deep.equal(op);
+		});
+	});
 });
 
 function opRetain(i) {

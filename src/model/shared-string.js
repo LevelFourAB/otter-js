@@ -10,6 +10,8 @@ class SharedString extends SharedObject {
 	constructor(editor) {
 		super(editor);
 
+		console.log('current', editor.current);
+
 		this.value = '';
 		let self = this;
 		editor.current.apply({
@@ -25,6 +27,8 @@ class SharedString extends SharedObject {
 				self.value += value;
 			}
 		});
+
+		editor.apply = this._apply.bind(this);
 	}
 
 	/**
@@ -33,10 +37,10 @@ class SharedString extends SharedObject {
 	 *
 	 * @protected
 	 */
-	apply(op, remote) {
+	_apply(data) {
 		let self = this;
 		let index = 0;
-		op.apply({
+		data.operation.apply({
 			retain(count) {
 				index += count;
 			},
@@ -101,7 +105,7 @@ class SharedString extends SharedObject {
 			}
 		});
 
-		this.editor.apply(delta.done());
+		this.editor.send(delta.done());
 	}
 
 	/**
@@ -109,7 +113,7 @@ class SharedString extends SharedObject {
 	 */
 	append(value) {
 		const length = this.value.length;
-		this.editor.apply(string.delta()
+		this.editor.send(string.delta()
 			.retain(length)
 			.insert(value)
 			.done()
@@ -135,7 +139,7 @@ class SharedString extends SharedObject {
 			throw new Error('index must not be more than the length of the current value');
 		}
 
-		this.editor.apply(string.delta()
+		this.editor.send(string.delta()
 			.retain(index)
 			.insert(value)
 			.retain(length - index)
@@ -166,7 +170,7 @@ class SharedString extends SharedObject {
 		}
 
 		const deleted = this.value.substring(fromIndex, toIndex);
-		this.editor.apply(string.delta()
+		this.editor.send(string.delta()
 			.retain(fromIndex)
 			.delete(deleted)
 			.retain(length - toIndex)

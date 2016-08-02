@@ -150,6 +150,10 @@ class Model {
 
 			events: new EventEmitter(),
 
+			getObject(id, type) {
+				return self._getObject(id, type);
+			},
+
 			queueEvent(type, data) {
 				self._queueEvent(id, type, data);
 			},
@@ -190,6 +194,10 @@ class Model {
 
 	on(event, listener) {
 		return this.root.on(event, listener);
+	}
+
+	static defaultType() {
+		return combined.newType();
 	}
 }
 

@@ -15,7 +15,7 @@ describe('Editor Control', function() {
 	let sync;
 
 	function editor(id) {
-		return new Editor(id, type, sync);
+		return new Editor(id, sync);
 	}
 
 	beforeEach(function() {

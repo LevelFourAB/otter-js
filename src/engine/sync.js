@@ -15,7 +15,10 @@ const EventEmitter = require('events');
  * @abstract
  */
 class OperationSync {
-	constructor() {
+	constructor(type) {
+		if(! type) throw new Error('OperationSync needs access to the OTType');
+
+		this.type = type;
 		this.events = new EventEmitter();
 	}
 
@@ -71,7 +74,7 @@ const doLater = typeof setImmediate === 'undefined' ? setTimeout : setImmediate;
 class LocalSync extends OperationSync {
 
 	constructor(control) {
-		super();
+		super(control.type);
 
 		this.control = control;
 		this.queue = [];

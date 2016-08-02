@@ -33,7 +33,7 @@ class SharedString extends SharedObject {
 	 *
 	 * @protected
 	 */
-	apply(op, remote=true) {
+	apply(op, remote) {
 		let self = this;
 		let index = 0;
 		op.apply({
@@ -47,10 +47,7 @@ class SharedString extends SharedObject {
 				const from = index;
 				index += value.length;
 
-				self.events.emit('insert', {
-					local: ! remote,
-					remote: remote,
-
+				self.editor.queueEvent('insert', {
 					index: from,
 					value: value
 				});
@@ -59,10 +56,7 @@ class SharedString extends SharedObject {
 			delete(value) {
 				self.value = self.value.substr(0, index) + self.value.substr(index + value.length);
 
-				self.events.emit('delete', {
-					local: ! remote,
-					remote: remote,
-
+				self.editor.queueEvent('delete', {
 					index: index,
 					fromIndex: index,
 					toIndex: index + value.length,
@@ -71,11 +65,6 @@ class SharedString extends SharedObject {
 				});
 			}
 		});
-	}
-
-	_applyAndSend(op) {
-		this.apply(op, false);
-		this.editor.send(op);
 	}
 
 	/**
@@ -112,7 +101,7 @@ class SharedString extends SharedObject {
 			}
 		});
 
-		this._applyAndSend(delta.done());
+		this.editor.apply(delta.done());
 	}
 
 	/**
@@ -120,9 +109,7 @@ class SharedString extends SharedObject {
 	 */
 	append(value) {
 		const length = this.value.length;
-		this.value += value;
-
-		this._applyAndSend(string.delta()
+		this.editor.apply(string.delta()
 			.retain(length)
 			.insert(value)
 			.done()
@@ -148,7 +135,7 @@ class SharedString extends SharedObject {
 			throw new Error('index must not be more than the length of the current value');
 		}
 
-		this._applyAndSend(string.delta()
+		this.editor.apply(string.delta()
 			.retain(index)
 			.insert(value)
 			.retain(length - index)
@@ -179,7 +166,7 @@ class SharedString extends SharedObject {
 		}
 
 		const deleted = this.value.substring(fromIndex, toIndex);
-		this._applyAndSend(string.delta()
+		this.editor.apply(string.delta()
 			.retain(fromIndex)
 			.delete(deleted)
 			.retain(length - toIndex)

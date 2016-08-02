@@ -1,12 +1,8 @@
 'use strict';
 
-const EventEmitter = require('events');
-
 class SharedObject {
 	constructor(editor) {
 		this.editor = editor;
-
-		this.events = new EventEmitter();
 	}
 
 	get objectId() {
@@ -22,7 +18,7 @@ class SharedObject {
 	}
 
 	on(event, listener) {
-		this.events.on(event, listener);
+		this.editor.events.on(event, listener);
 		return this;
 	}
 

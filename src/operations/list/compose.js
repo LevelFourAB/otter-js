@@ -151,11 +151,15 @@ module.exports = function(left, right) {
 	}
 
 	if(left.hasNext) {
-		throw 'Composition failure: Operation size mismatch';
+		throw new Error('Composition failure: Operation size mismatch');
 	}
 
 	while(right.hasNext) {
 		const op2 = right.next();
+		if(op2 instanceof ops.Retain) {
+			throw new Error('Dangling retain: ' + op2);
+		}
+
 		delta.adopt(op2);
 	}
 

@@ -18,6 +18,7 @@ class EditorControl {
 	 */
 	constructor(history, lock) {
 		this.history = history;
+		this.type = history.type;
 
 		this.lock = lock || locallock();
 	}

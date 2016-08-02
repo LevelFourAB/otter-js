@@ -6,16 +6,36 @@ const SYNCHRONIZED = 0;
 const AWAITING_CONFIRM = 1;
 const AWAITING_CONFIRM_WITH_BUFFER = 2;
 
+/**
+ * Editor for a operational transformation type. The editor synchronizes
+ * with other editors via an instance of {@link OperationSync}.
+ *
+ * Every editor connected needs to have a unique session id, session ids may
+ * not be reused. The session id is used internally to create tokens that
+ * are used to keep track of what changes are actually remote.
+ */
 class Editor {
-	constructor(id, type, sync) {
+	/**
+	 * Create a new editor.
+	 *
+	 * @param id {string}
+	 *   unique session id for this editor
+	 * @param sync {OperationSync}
+	 *   synchronization provider, usually an instance that will send and
+	 *   receive {@link TaggedOperation}s from a central server
+	 */
+	constructor(id, sync) {
 		this.id = id;
-		this.type = type;
+		this.type = sync.type;
 		this.sync = sync;
 
 		this.lastId = 0;
 
 		this.state = SYNCHRONIZED;
 		this.events = new EventEmitter();
+
+		this.composing = null;
+		this.isComposing = false;
 	}
 
 	connect() {
@@ -32,6 +52,19 @@ class Editor {
 
 	close() {
 		this.sync.close();
+	}
+
+	performEdit(callback) {
+		this.isComposing = true;
+		try {
+			return callback();
+		} finally {
+			this.isComposing = false;
+			if(this.composing) {
+				this.apply(this.composing);
+				this.composing = null;
+			}
+		}
 	}
 
 	addEventListener(event, listener) {
@@ -150,6 +183,17 @@ class Editor {
 	apply(op) {
 		if(typeof this.parentHistoryId === 'undefined') {
 			throw 'Editor has not been connected';
+		}
+
+		if(this.isComposing) {
+			// Current composing several edits, just compose without sending
+			if(this.composing) {
+				this.composing = this.type.compose(this.composing, op);
+			} else {
+				this.composing = op;
+			}
+
+			return;
 		}
 
 		// Compose together with the current operation

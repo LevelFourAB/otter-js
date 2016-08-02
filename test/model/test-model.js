@@ -16,7 +16,7 @@ describe('Model', function() {
 	let sync;
 
 	function editor(id) {
-		return new Editor(id, type, sync);
+		return new Editor(id, sync);
 	}
 
 	function model(id) {
@@ -34,12 +34,12 @@ describe('Model', function() {
 		sync = OperationSync.local(control);
 	});
 
-	it('#1', function() {
+	it('rootMap', function() {
 
 		sync.suspend();
 
 		const m1 = model('1');
-		const m2 = model('2');
+		let m2;
 
 		return m1.open()
 			.then(() => {
@@ -51,9 +51,32 @@ describe('Model', function() {
 
 				return sync.waitForEmpty();
 			})
-			.then(() => m2.open())
+			.then(() => {
+				m2 = model('2');
+				return m2.open();
+			})
 			.then(() => {
 				expect(m2.get('key')).to.equal('value');
+			});
+	});
+
+	it('rootMapEvents', function() {
+		const m1 = model('1');
+		const m2 = model('1');
+
+		let b;
+		m2.addEventListener('valueChanged', function(e) {
+			b = e.newValue;
+		});
+
+		return m1.open()
+			.then(() => m2.open())
+			.then(() => {
+				m1.set('key', 'value');
+				return sync.waitForEmpty();
+			})
+			.then(() => {
+				expect(b).to.equal('value');
 			});
 	});
 });

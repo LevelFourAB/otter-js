@@ -75,6 +75,35 @@ describe('List OT', function() {
 				.done()
 			);
 		});
+
+		it('#5', function() {
+			const op1 = list.delta()
+				.insert([ 'value', 'v1' ])
+				.insert([ 'value', 'v2' ])
+				.insert([ 'value', 'v3' ])
+				.insert([ 'value', 'v4' ])
+				.insert([ 'value', 'v5' ])
+				.done();
+
+			const op2 = list.delta()
+				.retain(1)
+				.delete([ 'value', 'v2' ])
+				.delete([ 'value', 'v3' ])
+				.delete([ 'value', 'v4' ])
+				.retain(2)
+				.done();
+
+			let failed = false;
+			try {
+				const op = type.compose(op1, op2);
+			} catch(e) {
+				failed = true;
+			}
+
+			if(! failed) {
+				assert.isNotOk(op, 'This test should fail, but instead got: ' + op.toString());
+			}
+		});
 	});
 
 	describe('transform', function() {

@@ -4,6 +4,7 @@ const OTType = require('../type');
 
 const map = require('../map');
 const string = require('../string');
+const list = require('../list');
 
 const compose = require('./compose');
 const transform = require('./transform');
@@ -14,6 +15,7 @@ class CombinedType extends OTType {
 
 		this.types = {
 			map: map.newType(),
+			list: list.newType(),
 			string: string.newType()
 		};
 	}

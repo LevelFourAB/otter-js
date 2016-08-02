@@ -64,7 +64,7 @@ class ListDelta {
 	}
 
 	retain(length) {
-		if(length <= 0) return;
+		if(length <= 0) return this;
 
 		this._switchState(RETAIN);
 

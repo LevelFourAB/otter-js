@@ -47,8 +47,19 @@ class SharedMap extends SharedObject {
 		return typeof this.values[key] !== 'undefined';
 	}
 
-	get(key) {
-		return this.values[key] || null;
+	get(key, factory) {
+		let value = this.values[key];
+		if(value) return value;
+
+		if(factory) {
+			value = this.values[key] = factory();
+			this.editor.send(map.delta()
+				.set(key, dataValues.toData(null), dataValues.toData(value))
+				.done()
+			);
+		}
+
+		return value || null;
 	}
 
 	remove(key) {

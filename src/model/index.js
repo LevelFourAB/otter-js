@@ -176,8 +176,8 @@ class Model {
 		return this.root.containsKey(key);
 	}
 
-	get(key) {
-		return this.root.get(key);
+	get(key, factory) {
+		return this.root.get(key, factory);
 	}
 
 	remove(key) {

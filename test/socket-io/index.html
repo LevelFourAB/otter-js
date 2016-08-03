@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+		<script src="/otter.js"></script>
+		<style>
+			input, textarea {
+				display: block;
+
+				box-sizing: border-box;
+				width: 100%;
+				
+				margin-bottom: 10px;
+
+				border: 1px solid grey;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>Otter testing</h2>
+
+		<div>
+			<label for="title">Title</label>
+			<input id="title" type="text">
+		</div>
+		<div>
+			<label for="text">Text</label>
+			<textarea id="text" rows="15" cols="80"></textarea>
+		</div>
+
+		<script>
+			// Don't use this for your own impl, instead use a flake based id from the server or something similar
+			var id = Date.now() + "_" + Math.floor(Math.random() * 2000);
+
+			var socket = io('/');
+			var sync = new otter.engine.SocketIoSync(otter.Model.defaultType(), socket, window.location.hash || 'shared');
+
+			var model = new otter.Model(new otter.engine.Editor(id, sync));
+
+			model.open()
+				.then(function() {
+					var title = model.get('title', function() {
+						var result = model.newString();
+						result.set('Cookies are tasty');
+						return result;
+					});
+
+					var text = model.get('text', function() {
+						var result = model.newString();
+						result.set('Hello world!');
+						return result;
+					});
+
+					otter.model.bind.text(text, document.getElementById('text'));
+					otter.model.bind.text(title, document.getElementById('title'));
+				});
+		</script>
+	</body>
+</html>

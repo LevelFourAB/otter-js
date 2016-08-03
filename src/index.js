@@ -16,3 +16,8 @@ exports.engine = {
 };
 
 exports.Model = require('./model');
+exports.model = {
+	bind: {
+		text: require('./model/binding/text')
+	}
+};

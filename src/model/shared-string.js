@@ -88,6 +88,8 @@ class SharedString extends SharedObject {
 	 * value against the previous value just send the changes.
 	 */
 	set(value) {
+		if(this.value === value) return;
+
 		const delta = string.delta();
 		let index = 0;
 		diff(this.value, value).forEach(d => {

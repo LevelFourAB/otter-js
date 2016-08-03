@@ -54,8 +54,8 @@ module.exports = function(types, left, right) {
 						throw 'Can not compose, unknown type: ' + op1.type;
 					}
 
-					const composed = type.compose(op1, op2);
-					it1.replace(new ops.Update(op1.key, op1.type, composed));
+					const composed = type.compose(op1.operation, op2.operation);
+					it1.replace(new ops.Update(op1.id, op1.type, composed));
 				}
 
 				handled = true;

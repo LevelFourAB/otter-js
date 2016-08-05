@@ -1622,9 +1622,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				delta.delete(value2);
 
-				if (_length < length1) {
+				if (length1 < _length) {
+					delta.delete(value2.substring(0, length1));
+					right.replace(new ops.Delete(value2.substring(length1)));
+				} else if (_length < length1) {
 					// Only replace if we deleted less than we retain
+					delta.delete(value2);
 					left.replace(new ops.Retain(length1 - _length));
+				} else {
+					delta.delete(value2);
 				}
 			}
 		}
@@ -5430,19 +5436,27 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var events = ['textInput', 'keydown', 'keyup', 'cut', 'paste', 'drop', 'dragend'];
+	var events = ['input'];
 
 	/**
 	 * Bind a text input or a textarea to the given {@link SharedString}.
 	 */
 	function bind(string, element) {
+
+		var ignore = false;
 		function snapshot() {
-			console.log(element, element.value);
+			if (ignore) return;
+
 			string.set(element.value);
 		}
 
 		events.forEach(function (event) {
-			element.addEventListener(event, snapshot);
+			ignore = true;
+			try {
+				element.addEventListener(event, snapshot);
+			} finally {
+				ignore = false;
+			}
 		});
 
 		// TODO: Smarter way to track selection movememt

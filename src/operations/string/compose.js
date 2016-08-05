@@ -48,9 +48,15 @@ module.exports = function(left, right) {
 
 			delta.delete(value2);
 
-			if(length2 < length1) {
+			if(length1 < length2) {
+				delta.delete(value2.substring(0, length1));
+				right.replace(new ops.Delete(value2.substring(length1)));
+			} else if(length2 < length1) {
 				// Only replace if we deleted less than we retain
+				delta.delete(value2);
 				left.replace(new ops.Retain(length1 - length2));
+			} else {
+				delta.delete(value2);
 			}
 		}
 	}

@@ -1,18 +1,26 @@
 'use strict';
 
-const events = [ 'textInput', 'keydown', 'keyup', 'cut', 'paste', 'drop', 'dragend' ];
+const events = [ 'input' ];
 
 /**
  * Bind a text input or a textarea to the given {@link SharedString}.
  */
 function bind(string, element) {
+
+	let ignore = false;
 	function snapshot() {
-		console.log(element, element.value);
+		if(ignore) return;
+
 		string.set(element.value);
 	}
 
 	events.forEach(event => {
-		element.addEventListener(event, snapshot);
+		ignore = true;
+		try {
+			element.addEventListener(event, snapshot);
+		} finally {
+			ignore = false;
+		}
 	});
 
 	// TODO: Smarter way to track selection movememt

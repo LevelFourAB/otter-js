@@ -2,11 +2,13 @@
 
 const ops = require('./ops');
 const CompoundOperation = require('../compound-operation');
+const AnnotationChange = require('./annotations').AnnotationChange;
 
 const EMPTY = 0;
 const RETAIN = 1;
 const INSERT = 2;
 const DELETE = 3;
+const ANNOTATIONS = 4;
 
 /**
  * Helper to create operations that indicate changes to a string.
@@ -48,10 +50,15 @@ class StringDelta {
 					this._ops.push(new ops.Delete(this._value));
 				}
 				break;
+			case ANNOTATIONS:
+				if(this._annotationChange) {
+					this._ops.push(new ops.AnnotationUpdate(this._annotationChange));
+				}
 		}
 
 		this._retainCount = 0;
 		this._value = '';
+		this._annotationChange = null;
 	}
 
 	retain(length) {
@@ -86,9 +93,74 @@ class StringDelta {
 		return this;
 	}
 
+	updateAnnotations(changes) {
+		if(changes) {
+			if(changes.empty) return;
+
+			if(this._state != ANNOTATIONS) {
+				this._flush();
+				this._state = ANNOTATIONS;
+			}
+
+			this._annotationChange = AnnotationChange.merge(this._annotationChange, changes);
+		} else {
+			return new AnnotationUpdater(this);
+		}
+	}
+
 	done() {
 		this._flush();
 		return new CompoundOperation(this._ops);
+	}
+}
+
+class AnnotationUpdater {
+	constructor(parent) {
+		this._parent = parent;
+		this._changes = {};
+	}
+
+	set(key, oldValue, newValue) {
+		if(newValue === null || typeof newValue === 'undefined') {
+			throw new Error('newValue must have a non-null value');
+		}
+
+		this._changes[key] = {
+			oldValue: oldValue,
+			newValue: newValue
+		};
+
+		return this;
+	}
+
+	remove(key, currentValue) {
+		if(currentValue === null || typeof currentValue === 'undefined') {
+			throw new Error('currentValue must have a non-null value');
+		}
+
+		this._changes[key] = {
+			oldValue: currentValue,
+			newValue: null
+		};
+
+		return this;
+	}
+
+	done() {
+		const change = new AnnotationChange(this._changes);
+		if(change.empty) return this._parent;
+
+		if(this._parent._state != ANNOTATIONS) {
+			this._parent._flush();
+			this._parent._state = ANNOTATIONS;
+		}
+
+		this._parent._annotationChange = AnnotationChange.merge(
+			this._parent._annotationChange,
+			new AnnotationChange(this._changes)
+		);
+
+		return this._parent;
 	}
 }
 

@@ -64,6 +64,25 @@ class Delete {
 	}
 }
 
+class AnnotationUpdate {
+	constructor(change) {
+		this.change = change;
+	}
+
+	apply(handler) {
+		handler.updateAnnotations(this.change);
+	}
+
+	invert() {
+		return new AnnotationUpdate(this.change.invert());
+	}
+
+	toString() {
+		return 'AnnotationUpdate{' + this.change + '}';
+	}
+}
+
 exports.Retain = Retain;
 exports.Insert = Insert;
 exports.Delete = Delete;
+exports.AnnotationUpdate = AnnotationUpdate;

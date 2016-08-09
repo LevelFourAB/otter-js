@@ -4,6 +4,9 @@ const OperationIterator = require('../iterator');
 const StringDelta = require('./delta');
 const ops = require('./ops');
 
+const annotations = require('./annotations');
+const AnnotationChange = annotations.AnnotationChange;
+
 /**
  * Main transformation for strings.
  */
@@ -11,8 +14,18 @@ module.exports = function(left, right) {
 	left = new OperationIterator(left);
 	right = new OperationIterator(right);
 
-	const deltaLeft = new StringDelta();
-	const deltaRight = new StringDelta();
+	let leftAnnotations;
+	let rightAnnotations;
+	const deltaLeft = new annotations.AnnotationNormalizingDelta(new StringDelta(), () => {
+		const change = leftAnnotations;
+		leftAnnotations = null;
+		return change;
+	});
+	const deltaRight = new annotations.AnnotationNormalizingDelta(new StringDelta(), () => {
+		const change = rightAnnotations;
+		rightAnnotations = null;
+		return change;
+	});
 
 	function handleRetain(op1, op2) {
 		const length1 = op1.length;
@@ -81,17 +94,25 @@ module.exports = function(left, right) {
 				// Same length, simply delete
 				deltaRight.delete(value2);
 			}
+		} else if(op2 instanceof ops.AnnotationUpdate) {
+			rightAnnotations = AnnotationChange.merge(rightAnnotations, op2.change);
+			left.back();
 		}
 	}
 
 	function handleInsert(op1, op2) {
-		const value1 = op1.value;
-		const length1 = op1.value.length;
+		if(op2 instanceof ops.AnnotationUpdate) {
+			rightAnnotations = AnnotationChange.merge(rightAnnotations, op2.change);
+			left.back();
+		} else {
+			const value1 = op1.value;
+			const length1 = op1.value.length;
 
-		deltaLeft.insert(value1);
-		deltaRight.retain(length1);
+			deltaLeft.insert(value1);
+			deltaRight.retain(length1);
 
-		right.back();
+			right.back();
+		}
 	}
 
 	function handleDelete(op1, op2) {
@@ -151,6 +172,21 @@ module.exports = function(left, right) {
 			} else {
 				// Do nothing
 			}
+		} else if(op2 instanceof ops.AnnotationUpdate) {
+			rightAnnotations = AnnotationChange.merge(rightAnnotations, op2.change);
+			left.back();
+		}
+	}
+
+	function handleAnnotationUpdate(op1, op2) {
+		const change1 = op1.change;
+		leftAnnotations = AnnotationChange.merge(leftAnnotations, change1);
+
+		if(op2 instanceof ops.AnnotationUpdate) {
+			const change2 = op2.change;
+			rightAnnotations = AnnotationChange.merge(rightAnnotations, change2);
+		} else {
+			right.back();
 		}
 	}
 
@@ -166,6 +202,8 @@ module.exports = function(left, right) {
 				handleInsert(op1, op2);
 			} else if(op1 instanceof ops.Delete) {
 				handleDelete(op1, op2);
+			} else if(op1 instanceof ops.AnnotationUpdate) {
+				handleAnnotationUpdate(op1, op2);
 			}
 		} else {
 			/*

@@ -3,6 +3,7 @@
 const CompoundOperation = require('../compound-operation');
 const ops = require('./ops');
 const StringDelta = require('./delta');
+const AnnotationChange = require('./annotations').AnnotationChange;
 
 /**
  * Turn operations into a string.
@@ -12,85 +13,48 @@ exports.toJSON = function(op) {
 	CompoundOperation.asArray(op)
 		.forEach(subOp => {
 			if(subOp instanceof ops.Retain) {
-				result.push('__' + subOp.length);
+				result.push([ 'retain', subOp.length ]);
 			} else if(subOp instanceof ops.Insert) {
-				result.push('++\'' + subOp.value.replace(/'/g, '\\\'') + '\'');
+				result.push([ 'insert', subOp.value ]);
 			} else if(subOp instanceof ops.Delete) {
-				result.push('--\'' + subOp.value.replace(/'/g, '\\\'') + '\'');
+				result.push([ 'delete', subOp.value ]);
+			} else if(subOp instanceof ops.AnnotationUpdate) {
+				result.push([ 'annotations', subOp.change._changes]);
 			} else {
 				throw new Error('Unsupported operation: ' + subOp);
 			}
 		});
 
-	return result.length === 0 ? '' : result.join(';') + ';';
+	return result;
 };
 
 /**
  * Turn a JSON string into operations we can work with.
  */
 exports.fromJSON = function(input) {
+	if(! Array.isArray(input)) {
+		throw new Error('Given input is not an array, got: ' + input);
+	}
+
 	const delta = new StringDelta();
-
-	let i = 0;
-	let len = input.length;
-
-	function nextIs(c) {
-		if(++i >= len) {
-			throw new Error('Invalid operation, no more characters to read');
+	input.forEach(op => {
+		switch(op[0]) {
+			case 'retain':
+				delta.retain(op[1]);
+				break;
+			case 'insert':
+				delta.insert(op[1]);
+				break;
+			case 'delete':
+				delta.delete(op[1]);
+				break;
+			case 'annotations':
+				delta.updateAnnotations(new AnnotationChange(op[1]));
+				break;
+			default:
+				throw new Error('Unknown operation: ' + op);
 		}
-
-		if(input.charAt(i) !== c) {
-			throw new Error('Invalid operation, expected ' + c + ' but got ' + input.charAt(i));
-		}
-
-		i++;
-	}
-
-	function readUntilEnd(useQuotes) {
-		let buffer = [];
-		let quoted = false;
-
-		while(i < len) {
-			const c0 = input.charAt(i);
-			if(c0 === ';' && ! quoted) {
-				return buffer.join('');
-			} else if(c0 === '\\' && quoted) {
-				if(input.charAt(i + 1) === '\'') {
-					buffer.push('\'');
-
-					i += 1;
-				} else {
-					buffer.push('\\');
-				}
-			} else if(c0 === '\'' && useQuotes) {
-				quoted = ! quoted;
-			} else {
-				buffer.push(c0);
-			}
-
-			i++;
-		}
-
-		throw new Error('Reached end of stream before end of operation');
-	}
-
-	while(i < len) {
-		const c = input.charAt(i);
-		if(c === '_') {
-			nextIs('_');
-			delta.retain(parseInt(readUntilEnd(false)));
-		} else if(c === '+') {
-			nextIs('+');
-			delta.insert(readUntilEnd(true));
-		} else if(c === '-') {
-			nextIs('-');
-			delta.delete(readUntilEnd(true));
-		} else {
-			throw new Error('Unknown operation started with: ' + c);
-		}
-
-		i++;
-	}
+	});
 
 	return delta.done();
 };

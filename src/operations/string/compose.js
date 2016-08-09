@@ -4,6 +4,9 @@ const OperationIterator = require('../iterator');
 const StringDelta = require('./delta');
 const ops = require('./ops');
 
+const annotations = require('./annotations');
+const AnnotationChange = annotations.AnnotationChange;
+
 /**
  * Compose two operations by stepping through operations to figure out how
  * the combined result should look like.
@@ -12,8 +15,15 @@ module.exports = function(left, right) {
 	left = new OperationIterator(left);
 	right = new OperationIterator(right);
 
+	let annotationChanges = null;
 
-	const delta = new StringDelta();
+	const delta = new annotations.AnnotationNormalizingDelta(
+		new StringDelta(),
+		() => {
+			const change = annotationChanges;
+			annotationChanges = null;
+			return change;
+		});
 
 	function handleRetain(op1, op2) {
 		const length1 = op1.length;
@@ -46,18 +56,19 @@ module.exports = function(left, right) {
 			const value2 = op2.value;
 			const length2 = value2.length;
 
-			delta.delete(value2);
-
 			if(length1 < length2) {
 				delta.delete(value2.substring(0, length1));
 				right.replace(new ops.Delete(value2.substring(length1)));
-			} else if(length2 < length1) {
+			} else if(length1 > length2) {
 				// Only replace if we deleted less than we retain
 				delta.delete(value2);
 				left.replace(new ops.Retain(length1 - length2));
 			} else {
 				delta.delete(value2);
 			}
+		} else if(op2 instanceof ops.AnnotationUpdate) {
+			annotationChanges = AnnotationChange.merge(annotationChanges, op2.change);
+			left.back();
 		}
 	}
 
@@ -115,6 +126,9 @@ module.exports = function(left, right) {
 			} else {
 				// Exact same length, do nothing as they cancel each other
 			}
+		} else if(op2 instanceof ops.AnnotationUpdate) {
+			annotationChanges = AnnotationChange.merge(annotationChanges, op2.change);
+			left.back();
 		}
 	}
 
@@ -144,6 +158,29 @@ module.exports = function(left, right) {
 			 */
 			delta.delete(value1);
 			right.back();
+		} else if(op2 instanceof ops.AnnotationUpdate) {
+			annotationChanges = AnnotationChange.merge(annotationChanges, op2.change);
+			left.back();
+		}
+	}
+
+	function handleAnnotationUpdate(op1, op2) {
+		const change1 = op1.change;
+
+		if(op2 instanceof ops.AnnotationUpdate) {
+			/*
+			 * Right operation is also an annotation update. Merge the two
+			 * sets of changes.
+			 */
+			const merged = AnnotationChange.merge(change1, op2.change);
+			annotationChanges = AnnotationChange.merge(annotationChanges, merged);
+		} else {
+			/*
+			 * Right operation is something else, queue the annotation changes
+			 * and handle right again.
+			 */
+			annotationChanges = AnnotationChange.merge(annotationChanges, change1);
+			right.back();
 		}
 	}
 
@@ -157,11 +194,21 @@ module.exports = function(left, right) {
 			handleInsert(op1, op2);
 		} else if(op1 instanceof ops.Delete) {
 			handleDelete(op1, op2);
+		} else if(op1 instanceof ops.AnnotationUpdate) {
+			handleAnnotationUpdate(op1, op2);
 		}
 	}
 
-	if(left.hasNext) {
-		throw 'Composition failure: Operation size mismatch';
+	while(left.hasNext) {
+		const op1 = left.next();
+		if(op1 instanceof ops.AnnotationUpdate) {
+			/*
+			 * Annotation updates are zero-sized so they can always be composed.
+			 */
+			op1.apply(delta);
+		} else {
+			throw new Error('Composition failure: Operation size mismatch');
+		}
 	}
 
 	while(right.hasNext) {

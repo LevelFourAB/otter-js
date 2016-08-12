@@ -15,12 +15,22 @@ class EditorControl {
 	 * @param [lock]
 	 *   optional lock function, see {@link LocalLock} for details about
 	 *   how to implement locks.
+	 * @param [idGenerator]
+	 *   optional function that returns a unique session id. The default
+	 *   function uses the current timestamp and a random number as the
+	 *   id.
 	 */
-	constructor(history, lock) {
+	constructor(history, lock, idGenerator) {
 		this.history = history;
 		this.type = history.type;
 
 		this.lock = lock || locallock();
+		this.idGenerator = idGenerator || function() {
+			const now = Date.now();
+			const random = Math.floor(Math.random() * 50000);
+
+			return now.toString(36) + '-' + random.toString(36);
+		};
 	}
 
 	/**
@@ -35,13 +45,15 @@ class EditorControl {
 			.then(id => {
 				return this.history.until(id + 1)
 					.then(items => {
+						const sessionId = this.idGenerator();
+
 						const composer = this.history.type.newComposer();
 						items.forEach(function(item) {
 							composer.add(item);
 						});
 
 						const composed = composer.done();
-						return new TaggedOperation(id, null, composed);
+						return new TaggedOperation(id, sessionId, composed);
 					});
 			});
 	}

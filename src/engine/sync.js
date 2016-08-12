@@ -131,7 +131,7 @@ class LocalSync extends OperationSync {
 					});
 				})
 				.catch(e => {
-					console.log('Error occured during flush', e.stack);
+					console.log('Error occured during flush', e.stack || e);
 				});
 		});
 	}

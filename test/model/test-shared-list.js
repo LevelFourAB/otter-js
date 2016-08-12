@@ -15,12 +15,12 @@ describe('SharedList', function() {
 	let control;
 	let sync;
 
-	function editor(id) {
-		return new Editor(id, sync);
+	function editor() {
+		return new Editor(sync);
 	}
 
-	function model(id) {
-		return new Model(editor(id));
+	function model() {
+		return new Model(editor());
 	}
 
 	beforeEach(function() {
@@ -35,7 +35,7 @@ describe('SharedList', function() {
 	});
 
 	it('add', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -48,7 +48,7 @@ describe('SharedList', function() {
 	});
 
 	it('addAll', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -63,7 +63,7 @@ describe('SharedList', function() {
 	});
 
 	it('insert #1', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -80,7 +80,7 @@ describe('SharedList', function() {
 	});
 
 	it('insert #2', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -97,7 +97,7 @@ describe('SharedList', function() {
 	});
 
 	it('insertAll', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -117,7 +117,7 @@ describe('SharedList', function() {
 
 
 	it('remove', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -132,7 +132,7 @@ describe('SharedList', function() {
 	});
 
 	it('removeRange #1', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -147,7 +147,7 @@ describe('SharedList', function() {
 	});
 
 	it('removeRange #2', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()
@@ -164,7 +164,7 @@ describe('SharedList', function() {
 	});
 
 	it('set', function() {
-		const m1 = model('1');
+		const m1 = model();
 		const list1 = m1.newList();
 
 		return m1.open()

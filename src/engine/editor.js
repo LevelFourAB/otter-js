@@ -24,8 +24,7 @@ class Editor {
 	 *   synchronization provider, usually an instance that will send and
 	 *   receive {@link TaggedOperation}s from a central server
 	 */
-	constructor(id, sync) {
-		this.id = id;
+	constructor(sync) {
 		this.type = sync.type;
 		this.sync = sync;
 
@@ -43,6 +42,7 @@ class Editor {
 			.then(initial => {
 				this.parentHistoryId = initial.historyId;
 				this.current = initial.operation;
+				this.id = initial.token;
 
 				this.sync.addEventListener('change', this.receive.bind(this));
 

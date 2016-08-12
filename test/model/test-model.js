@@ -15,12 +15,12 @@ describe('Model', function() {
 	let control;
 	let sync;
 
-	function editor(id) {
-		return new Editor(id, sync);
+	function editor() {
+		return new Editor(sync);
 	}
 
 	function model(id) {
-		return new Model(editor(id));
+		return new Model(editor());
 	}
 
 	beforeEach(function() {

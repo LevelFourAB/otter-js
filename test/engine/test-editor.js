@@ -10,12 +10,12 @@ const Editor = require('../../src/engine/editor');
 const string = require('../../src/operations/string');
 const type = string.newType();
 
-describe('Editor Control', function() {
+describe('Editor', function() {
 	let control;
 	let sync;
 
 	function editor(id) {
-		return new Editor(id, sync);
+		return new Editor(sync);
 	}
 
 	beforeEach(function() {
@@ -32,7 +32,7 @@ describe('Editor Control', function() {
 	});
 
 	it('#1', function() {
-		const e1 = editor('1');
+		const e1 = editor();
 
 		return e1.connect()
 			.then(() => {
@@ -53,8 +53,8 @@ describe('Editor Control', function() {
 	});
 
 	it('multiple #1', function() {
-		const e1 = editor('1');
-		const e2 = editor('2');
+		const e1 = editor();
+		const e2 = editor();
 
 		return e1.connect()
 			.then(() => e2.connect())
@@ -76,8 +76,8 @@ describe('Editor Control', function() {
 	});
 
 	it('multiple #2', function() {
-		const e1 = editor('1');
-		const e2 = editor('2');
+		const e1 = editor();
+		const e2 = editor();
 
 		sync.suspend();
 		return e1.connect()
@@ -114,8 +114,8 @@ describe('Editor Control', function() {
 	});
 
 	it('multiple #3', function() {
-		const e1 = editor('1');
-		const e2 = editor('2');
+		const e1 = editor();
+		const e2 = editor();
 
 		sync.suspend();
 		return e1.connect()
@@ -159,8 +159,8 @@ describe('Editor Control', function() {
 	});
 
 	it('multiple #4', function() {
-		const e1 = editor('1');
-		const e2 = editor('2');
+		const e1 = editor();
+		const e2 = editor();
 
 		sync.suspend();
 		return e1.connect()

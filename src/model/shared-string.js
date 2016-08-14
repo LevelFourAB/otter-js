@@ -10,8 +10,6 @@ class SharedString extends SharedObject {
 	constructor(editor) {
 		super(editor);
 
-		console.log('current', editor.current);
-
 		this.value = '';
 		let self = this;
 		editor.current.apply({

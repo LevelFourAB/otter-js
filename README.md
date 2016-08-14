@@ -29,7 +29,7 @@ const string = require('otter-js/operations/string');
 const Editor = require('otter-js/engine/editor');
 
 const sync = new YourOperationSync(string.newType(), ...);
-const editor = new Editor(uniqueSessionId, sync);
+const editor = new Editor(sync);
 
 // Connect and do something with the current version
 editor.connect()
@@ -89,14 +89,17 @@ const Editor = require('otter-js/engine/editor');
 const Model = require('otter-js/model');
 
 const sync = new YourOperationSync(combined.newType(), ...);
-const editor = new Editor(uniqueSessionId, sync);
+const editor = new Editor(sync);
 const model = new Model(editor);
 
-// Create a new string and store it in the root map
-const title = model.newString();
-title.set('Cookies are tasty');
-model.set('title', title);
+model.open()
+	.then(function() {
+		// Create a new string and store it in the root map
+		const title = model.newString();
+		title.set('Cookies are tasty');
+		model.set('title', title);
 
-// Set a primitive value in the map
-model.set('priority', 10);
+		// Set a primitive value in the map
+		model.set('priority', 10);
+	});
 ```

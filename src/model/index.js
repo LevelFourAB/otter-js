@@ -117,6 +117,8 @@ class Model {
 				local: true,
 				remote: false
 			});
+
+			editor.queueEvent('change', op);
 		}
 	}
 

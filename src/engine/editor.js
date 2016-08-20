@@ -75,6 +75,10 @@ class Editor {
 		return this.addEventListener(event, listener);
 	}
 
+	removeEventListener(event, listener) {
+		this.events.removeListener(event, listener);
+	}
+
 	receive(op) {
 		switch(this.state) {
 			case SYNCHRONIZED:

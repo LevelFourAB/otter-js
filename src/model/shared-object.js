@@ -22,6 +22,9 @@ class SharedObject {
 		return this;
 	}
 
+	removeEventListener(event, listener) {
+		return this.editor.events.removeListener(event, listener);
+	}
 }
 
 module.exports = SharedObject;

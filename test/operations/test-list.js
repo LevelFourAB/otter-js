@@ -104,6 +104,48 @@ describe('List OT', function() {
 				assert.isNotOk(op, 'This test should fail, but instead got: ' + op.toString());
 			}
 		});
+
+		it('#7', function() {
+			const op1 = list.delta()
+				.retain(4)
+				.insert('one')
+				.done();
+
+			const op2 = list.delta()
+				.retain(2)
+				.delete('one')
+				.retain(2)
+				.done();
+
+			expect(type.compose(op1, op2)).to.deep.equal(list.delta()
+				.retain(2)
+				.delete('one')
+				.retain(1)
+				.insert('one')
+				.done()
+			);
+		});
+
+		it('#8', function() {
+			const op1 = list.delta()
+				.retain(1)
+				.delete('a')
+				.retain(1)
+				.done();
+
+			const op2 = list.delta()
+				.insert('a')
+				.retain(2)
+				.done();
+
+			expect(type.compose(op1, op2)).to.deep.equal(list.delta()
+				.insert('a')
+				.retain(1)
+				.delete('a')
+				.retain(1)
+				.done()
+			);
+		});
 	});
 
 	describe('transform', function() {

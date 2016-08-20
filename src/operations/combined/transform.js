@@ -58,8 +58,8 @@ module.exports = function(types, left, right) {
 					}
 
 					const transformed = type.transform(op1.operation, op2.operation);
-					deltaLeft.add(new ops.Update(op1.id, op1.type, transformed.left));
-					deltaLeft.add(new ops.Update(op2.id, op2.type, transformed.right));
+					deltaLeft.push(new ops.Update(op1.id, op1.type, transformed.left));
+					deltaRight.push(new ops.Update(op2.id, op2.type, transformed.right));
 				}
 
 				handled = true;

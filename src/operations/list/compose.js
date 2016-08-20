@@ -42,14 +42,18 @@ module.exports = function(left, right) {
 		} else if(op2 instanceof ops.Delete) {
 			// Right operation is a delete, add it to the delta and replace ourselves
 
-			const items2 = op2.value;
+			const items2 = op2.items;
 			const length2 = items2.length;
 
-			delta.adopt(op2);
-
-			if(length2 < length1) {
+			if(length1 < length2) {
+				delta.deleteMultiple(items2.slice(0, length1));
+				right.replace(new ops.Delete(items2.slice(length1)));
+			} else if(length1 > length2) {
 				// Only replace if we deleted less than we retain
+				delta.deleteMultiple(items2);
 				left.replace(new ops.Retain(length1 - length2));
+			} else {
+				delta.deleteMultiple(items2);
 			}
 		}
 	}
@@ -117,7 +121,7 @@ module.exports = function(left, right) {
 			 * Right operation is a retain, delete left and back up one to
 			 * handle right retain again.
 			 */
-			delta.adopt(op2);
+			delta.adopt(op1);
 
 			right.back();
 		} else if(op2 instanceof ops.Insert) {
@@ -150,8 +154,13 @@ module.exports = function(left, right) {
 		}
 	}
 
-	if(left.hasNext) {
-		throw new Error('Composition failure: Operation size mismatch');
+	while(left.hasNext) {
+		const op1 = left.next();
+		if(op1 instanceof ops.Delete) {
+			delta.adopt(op1);
+		} else {
+			throw new Error('Composition failure: Operation size mismatch');
+		}
 	}
 
 	while(right.hasNext) {

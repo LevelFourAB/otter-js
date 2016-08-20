@@ -201,7 +201,7 @@ module.exports = function(left, right) {
 
 	while(left.hasNext) {
 		const op1 = left.next();
-		if(op1 instanceof ops.AnnotationUpdate) {
+		if(op1 instanceof ops.AnnotationUpdate || op1 instanceof ops.Delete) {
 			/*
 			 * Annotation updates are zero-sized so they can always be composed.
 			 */

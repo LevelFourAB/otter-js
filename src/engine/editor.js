@@ -34,7 +34,7 @@ class Editor {
 		this.events = new EventEmitter();
 
 		this.composing = null;
-		this.isComposing = false;
+		this.composeDepth = 0;
 	}
 
 	connect() {
@@ -55,12 +55,11 @@ class Editor {
 	}
 
 	performEdit(callback) {
-		this.isComposing = true;
+		this.composeDepth++;
 		try {
 			return callback();
 		} finally {
-			this.isComposing = false;
-			if(this.composing) {
+			if(--this.composeDepth === 0 && this.composing) {
 				this.apply(this.composing);
 				this.composing = null;
 			}
@@ -189,7 +188,7 @@ class Editor {
 			throw 'Editor has not been connected';
 		}
 
-		if(this.isComposing) {
+		if(this.composeDepth > 0) {
 			// Current composing several edits, just compose without sending
 			if(this.composing) {
 				this.composing = this.type.compose(this.composing, op);

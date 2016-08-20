@@ -132,6 +132,11 @@ class Model {
 		}
 	}
 
+	getObject(id) {
+		let object = this.objects[id];
+		return object || null;
+	}
+
 	_queueEvent(id, type, data) {
 		const editor = this.editors[id];
 		editor.events.emit(type, new events.Event(this.remote, data));

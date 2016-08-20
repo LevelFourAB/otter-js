@@ -23,10 +23,14 @@ class Model {
 		this.values = {};
 		this.objects = {};
 
-		editor.addEventListener('change', change => {
-			if(change.local) return;
+		this.events = new EventEmitter();
 
-			change.operation.apply(this._changeHandler);
+		editor.addEventListener('change', change => {
+			if(! change.local) {
+				change.operation.apply(this._changeHandler);
+			}
+
+			this.events.emit('change', change);
 		});
 
 		this._changeHandler = {
@@ -58,6 +62,8 @@ class Model {
 		this.registerType('string', e => new SharedString(e));
 
 		this.root = this._getObject('root', 'map');
+		this.root.on('valueChanged', data => this.events.emit('valueChanged', data));
+		this.root.on('valueRemoved', data => this.events.emit('valueRemove', data));
 	}
 
 	registerType(type, factory) {
@@ -191,11 +197,15 @@ class Model {
 	}
 
 	addEventListener(event, listener) {
-		return this.root.addEventListener(event, listener);
+		return this.events.on(event, listener);
 	}
 
 	on(event, listener) {
-		return this.root.on(event, listener);
+		return this.events.on(event, listener);
+	}
+
+	removeEventListener(event, listener) {
+		this.events.removeListener(event, listener);
 	}
 
 	static defaultType() {

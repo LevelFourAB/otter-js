@@ -4,6 +4,10 @@ const SharedObject = require('./shared-object');
 const list = require('../operations/list');
 const dataValues = require('./data-values');
 
+const isInteger = Number.isInteger || function(value) {
+	return typeof value === 'number' && isFinite(value) && Math.floor(value) === value;
+};
+
 class SharedList extends SharedObject {
 
 	constructor(editor) {
@@ -73,6 +77,14 @@ class SharedList extends SharedObject {
 		return this.items[index];
 	}
 
+	indexOf(object) {
+		for(let i=0; i<this.items.length; i++) {
+			if(this.items[i] === object) return i;
+		}
+
+		return -1;
+	}
+
 	clear() {
 		const delta = list.delta();
 
@@ -99,6 +111,17 @@ class SharedList extends SharedObject {
 	}
 
 	insert(index, item) {
+		if(! isInteger(index)) {
+			throw new Error('Index must be an integer, was: ' + index);
+		}
+
+		if(index > this.items.length) {
+			throw new Error('Can not insert at ' + index + ', only ' + this.items.length + ' items in list');
+		}
+		if(index < 0) {
+			throw new Error('Can not insert at ' + index + ', index must not be negative');
+		}
+
 		const length = this.items.length;
 		this.editor.send(list.delta()
 			.retain(index)
@@ -110,6 +133,18 @@ class SharedList extends SharedObject {
 
 	insertAll(index, items) {
 		const length = this.items.length;
+
+		if(! isInteger(index)) {
+			throw new Error('Index must be an integer, was: ' + index);
+		}
+
+		if(index > this.items.length) {
+			throw new Error('Can not insert at ' + index + ', only ' + this.items.length + ' items in list');
+		}
+		if(index < 0) {
+			throw new Error('Can not insert at ' + index + ', index must not be negative');
+		}
+
 		const delta = list.delta()
 			.retain(index);
 
@@ -121,6 +156,18 @@ class SharedList extends SharedObject {
 
 	remove(index) {
 		const length = this.items.length;
+
+		if(! isInteger(index)) {
+			throw new Error('Index must be an integer, was: ' + index);
+		}
+
+		if(index >= length) {
+			throw new Error('Can not remove at ' + index + ', only ' + this.items.length + ' items in list');
+		}
+		if(index < 0) {
+			throw new Error('Can not remove at ' + index + ', index must not be negative');
+		}
+
 		this.editor.send(list.delta()
 			.retain(index)
 			.delete(dataValues.toData(this.items[index]))
@@ -130,6 +177,22 @@ class SharedList extends SharedObject {
 	}
 
 	removeRange(fromIndex, toIndex) {
+		if(! isInteger(fromIndex)) {
+			throw new Error('fromIndex must be an integer, was: ' + fromIndex);
+		}
+
+		if(fromIndex < 0 || fromIndex > this.items.length) {
+			throw new Error('fromIndex must be between 0 and ' + (this.items.length-1) + ', but was ' + fromIndex);
+		}
+
+		if(! isInteger(toIndex)) {
+			throw new Error('toIndex must be an integer, was: ' + toIndex);
+		}
+
+		if(toIndex < 0 || toIndex >= this.items.length) {
+			throw new Error('toIndex must be between 0 and ' + this.items.length + ', but was ' + toIndex);
+		}
+
 		const length = this.items.length;
 		const delta = list.delta()
 			.retain(fromIndex);
@@ -144,8 +207,26 @@ class SharedList extends SharedObject {
 		this.editor.send(delta.done());
 	}
 
+	removeObject(obj) {
+		const idx = this.indexOf(obj);
+		if(idx < 0) return;
+
+		this.remove(idx);
+	}
+
 	set(index, value) {
+		if(! isInteger(index)) {
+			throw new Error('Index must be an integer, was: ' + index);
+		}
+
 		const length = this.items.length;
+		if(index > length) {
+			throw new Error('Can not set at ' + index + ', only ' + length + ' items in list');
+		}
+		if(index < 0) {
+			throw new Error('Can not set at ' + index + ', index must not be negative');
+		}
+
 		this.editor.send(list.delta()
 			.retain(index)
 			.insert(dataValues.toData(value))
@@ -153,6 +234,10 @@ class SharedList extends SharedObject {
 			.retain(length - index - 1)
 			.done()
 		);
+	}
+
+	asArray() {
+		return this.items.slice(0);
 	}
 }
 

@@ -97,7 +97,11 @@ class Model {
 		this.editor.close();
 	}
 
-	apply(id, type, op) {
+	performEdit(callback) {
+		this.editor.performEdit(callback);
+	}
+
+	_apply(id, type, op) {
 		// Compose together with the current value for the object
 		if(typeof this.values[id] !== 'undefined') {
 			const current = this.values[id];
@@ -171,7 +175,7 @@ class Model {
 			},
 
 			send(op) {
-				self.apply(this.objectId, this.objectType, op);
+				self._apply(this.objectId, this.objectType, op);
 			},
 
 			apply(op, local) {

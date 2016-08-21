@@ -112,16 +112,10 @@ class Model {
 			this.values[id] = op;
 		}
 
-		// Ask the editor to apply the operation and sync it with other editors
-		this.remote = false;
-		this.editor.apply(combined.delta()
-			.update(id, type, op)
-			.done()
-		);
-
 		// Ask the object to apply the operation as a local one
 		const editor = this.editors[id];
 		if(editor) {
+			this.remote = false;
 			editor.apply({
 				operation: op,
 				local: true,
@@ -130,6 +124,12 @@ class Model {
 
 			editor.queueEvent('change', op);
 		}
+
+		// Ask the editor to apply the operation and sync it with other editors
+		this.editor.apply(combined.delta()
+			.update(id, type, op)
+			.done()
+		);
 	}
 
 	getObject(id) {

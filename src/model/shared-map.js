@@ -52,11 +52,15 @@ class SharedMap extends SharedObject {
 		if(value) return value;
 
 		if(factory) {
-			value = this.values[key] = factory();
-			this.editor.send(map.delta()
-				.set(key, dataValues.toData(null), dataValues.toData(value))
-				.done()
-			);
+			const model = this.editor.model;
+			model.performEdit(() => {
+				value = this.values[key] = factory(model);
+
+				this.editor.send(map.delta()
+					.set(key, dataValues.toData(null), dataValues.toData(value))
+					.done()
+				);
+			});
 		}
 
 		return value || null;

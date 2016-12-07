@@ -19,5 +19,13 @@
   },
   "dependencies": {
     "fast-diff": "^1.0.1"
+  },
+  "jspm": {
+    "registry": "npm",
+    "main": "build/otter.js",
+    "format": "cjs",
+    "directories": {
+      "lib": "build"
+    }
   }
 }

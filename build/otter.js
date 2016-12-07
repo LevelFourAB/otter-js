@@ -60,21 +60,21 @@ return /******/ (function(modules) { // webpackBootstrap
 		map: __webpack_require__(1),
 		list: __webpack_require__(12),
 		string: __webpack_require__(19),
-		combined: __webpack_require__(26)
+		combined: __webpack_require__(27)
 	};
 
 	exports.engine = {
-		Editor: __webpack_require__(33),
-		EditorControl: __webpack_require__(35),
-		OperationSync: __webpack_require__(40),
-		TaggedOperation: __webpack_require__(39),
-		SocketIoSync: __webpack_require__(41)
+		Editor: __webpack_require__(34),
+		EditorControl: __webpack_require__(36),
+		OperationSync: __webpack_require__(41),
+		TaggedOperation: __webpack_require__(40),
+		SocketIoSync: __webpack_require__(42)
 	};
 
-	exports.Model = __webpack_require__(42);
+	exports.Model = __webpack_require__(43);
 	exports.model = {
 		bind: {
-			text: __webpack_require__(50)
+			text: __webpack_require__(51)
 		}
 	};
 
@@ -844,14 +844,18 @@ return /******/ (function(modules) { // webpackBootstrap
 			} else if (op2 instanceof ops.Delete) {
 				// Right operation is a delete, add it to the delta and replace ourselves
 
-				var items2 = op2.value;
+				var items2 = op2.items;
 				var _length = items2.length;
 
-				delta.adopt(op2);
-
-				if (_length < length1) {
+				if (length1 < _length) {
+					delta.deleteMultiple(items2.slice(0, length1));
+					right.replace(new ops.Delete(items2.slice(length1)));
+				} else if (length1 > _length) {
 					// Only replace if we deleted less than we retain
+					delta.deleteMultiple(items2);
 					left.replace(new ops.Retain(length1 - _length));
+				} else {
+					delta.deleteMultiple(items2);
 				}
 			}
 		}
@@ -918,7 +922,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    * Right operation is a retain, delete left and back up one to
 	    * handle right retain again.
 	    */
-				delta.adopt(op2);
+				delta.adopt(op1);
 
 				right.back();
 			} else if (op2 instanceof ops.Insert) {
@@ -951,17 +955,22 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 		}
 
-		if (left.hasNext) {
-			throw new Error('Composition failure: Operation size mismatch');
+		while (left.hasNext) {
+			var _op = left.next();
+			if (_op instanceof ops.Delete) {
+				delta.adopt(_op);
+			} else {
+				throw new Error('Composition failure: Operation size mismatch');
+			}
 		}
 
 		while (right.hasNext) {
-			var _op = right.next();
-			if (_op instanceof ops.Retain) {
-				throw new Error('Dangling retain: ' + _op);
+			var _op2 = right.next();
+			if (_op2 instanceof ops.Retain) {
+				throw new Error('Dangling retain: ' + _op2);
 			}
 
-			delta.adopt(_op);
+			delta.adopt(_op2);
 		}
 
 		return delta.done();
@@ -1530,8 +1539,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var OTType = __webpack_require__(3);
 	var _compose = __webpack_require__(21);
-	var _transform = __webpack_require__(24);
-	var serialization = __webpack_require__(25);
+	var _transform = __webpack_require__(25);
+	var serialization = __webpack_require__(26);
 
 	var StringType = function (_OTType) {
 		_inherits(StringType, _OTType);
@@ -1579,6 +1588,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	var StringDelta = __webpack_require__(22);
 	var ops = __webpack_require__(23);
 
+	var annotations = __webpack_require__(24);
+	var AnnotationChange = annotations.AnnotationChange;
+
 	/**
 	 * Compose two operations by stepping through operations to figure out how
 	 * the combined result should look like.
@@ -1587,7 +1599,13 @@ return /******/ (function(modules) { // webpackBootstrap
 		left = new OperationIterator(left);
 		right = new OperationIterator(right);
 
-		var delta = new StringDelta();
+		var annotationChanges = null;
+
+		var delta = new annotations.AnnotationNormalizingDelta(new StringDelta(), function () {
+			var change = annotationChanges;
+			annotationChanges = null;
+			return change;
+		});
 
 		function handleRetain(op1, op2) {
 			var length1 = op1.length;
@@ -1620,18 +1638,19 @@ return /******/ (function(modules) { // webpackBootstrap
 				var value2 = op2.value;
 				var _length = value2.length;
 
-				delta.delete(value2);
-
 				if (length1 < _length) {
 					delta.delete(value2.substring(0, length1));
 					right.replace(new ops.Delete(value2.substring(length1)));
-				} else if (_length < length1) {
+				} else if (length1 > _length) {
 					// Only replace if we deleted less than we retain
 					delta.delete(value2);
 					left.replace(new ops.Retain(length1 - _length));
 				} else {
 					delta.delete(value2);
 				}
+			} else if (op2 instanceof ops.AnnotationUpdate) {
+				annotationChanges = AnnotationChange.merge(annotationChanges, op2.change);
+				left.back();
 			}
 		}
 
@@ -1688,6 +1707,9 @@ return /******/ (function(modules) { // webpackBootstrap
 				} else {
 					// Exact same length, do nothing as they cancel each other
 				}
+			} else if (op2 instanceof ops.AnnotationUpdate) {
+				annotationChanges = AnnotationChange.merge(annotationChanges, op2.change);
+				left.back();
 			}
 		}
 
@@ -1717,6 +1739,29 @@ return /******/ (function(modules) { // webpackBootstrap
 	    */
 				delta.delete(value1);
 				right.back();
+			} else if (op2 instanceof ops.AnnotationUpdate) {
+				annotationChanges = AnnotationChange.merge(annotationChanges, op2.change);
+				left.back();
+			}
+		}
+
+		function handleAnnotationUpdate(op1, op2) {
+			var change1 = op1.change;
+
+			if (op2 instanceof ops.AnnotationUpdate) {
+				/*
+	    * Right operation is also an annotation update. Merge the two
+	    * sets of changes.
+	    */
+				var merged = AnnotationChange.merge(change1, op2.change);
+				annotationChanges = AnnotationChange.merge(annotationChanges, merged);
+			} else {
+				/*
+	    * Right operation is something else, queue the annotation changes
+	    * and handle right again.
+	    */
+				annotationChanges = AnnotationChange.merge(annotationChanges, change1);
+				right.back();
 			}
 		}
 
@@ -1730,16 +1775,26 @@ return /******/ (function(modules) { // webpackBootstrap
 				handleInsert(op1, op2);
 			} else if (op1 instanceof ops.Delete) {
 				handleDelete(op1, op2);
+			} else if (op1 instanceof ops.AnnotationUpdate) {
+				handleAnnotationUpdate(op1, op2);
 			}
 		}
 
-		if (left.hasNext) {
-			throw 'Composition failure: Operation size mismatch';
+		while (left.hasNext) {
+			var _op = left.next();
+			if (_op instanceof ops.AnnotationUpdate || _op instanceof ops.Delete) {
+				/*
+	    * Annotation updates are zero-sized so they can always be composed.
+	    */
+				_op.apply(delta);
+			} else {
+				throw new Error('Composition failure: Operation size mismatch');
+			}
 		}
 
 		while (right.hasNext) {
-			var _op = right.next();
-			_op.apply(delta);
+			var _op2 = right.next();
+			_op2.apply(delta);
 		}
 
 		return delta.done();
@@ -1757,11 +1812,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var ops = __webpack_require__(23);
 	var CompoundOperation = __webpack_require__(7);
+	var AnnotationChange = __webpack_require__(24).AnnotationChange;
 
 	var EMPTY = 0;
 	var RETAIN = 1;
 	var INSERT = 2;
 	var DELETE = 3;
+	var ANNOTATIONS = 4;
 
 	/**
 	 * Helper to create operations that indicate changes to a string.
@@ -1808,10 +1865,15 @@ return /******/ (function(modules) { // webpackBootstrap
 							this._ops.push(new ops.Delete(this._value));
 						}
 						break;
+					case ANNOTATIONS:
+						if (this._annotationChange) {
+							this._ops.push(new ops.AnnotationUpdate(this._annotationChange));
+						}
 				}
 
 				this._retainCount = 0;
 				this._value = '';
+				this._annotationChange = null;
 			}
 		}, {
 			key: 'retain',
@@ -1849,6 +1911,22 @@ return /******/ (function(modules) { // webpackBootstrap
 				return this;
 			}
 		}, {
+			key: 'updateAnnotations',
+			value: function updateAnnotations(changes) {
+				if (changes) {
+					if (changes.empty) return;
+
+					if (this._state != ANNOTATIONS) {
+						this._flush();
+						this._state = ANNOTATIONS;
+					}
+
+					this._annotationChange = AnnotationChange.merge(this._annotationChange, changes);
+				} else {
+					return new AnnotationUpdater(this);
+				}
+			}
+		}, {
 			key: 'done',
 			value: function done() {
 				this._flush();
@@ -1857,6 +1935,62 @@ return /******/ (function(modules) { // webpackBootstrap
 		}]);
 
 		return StringDelta;
+	}();
+
+	var AnnotationUpdater = function () {
+		function AnnotationUpdater(parent) {
+			_classCallCheck(this, AnnotationUpdater);
+
+			this._parent = parent;
+			this._changes = {};
+		}
+
+		_createClass(AnnotationUpdater, [{
+			key: 'set',
+			value: function set(key, oldValue, newValue) {
+				if (newValue === null || typeof newValue === 'undefined') {
+					throw new Error('newValue must have a non-null value');
+				}
+
+				this._changes[key] = {
+					oldValue: oldValue,
+					newValue: newValue
+				};
+
+				return this;
+			}
+		}, {
+			key: 'remove',
+			value: function remove(key, currentValue) {
+				if (currentValue === null || typeof currentValue === 'undefined') {
+					throw new Error('currentValue must have a non-null value');
+				}
+
+				this._changes[key] = {
+					oldValue: currentValue,
+					newValue: null
+				};
+
+				return this;
+			}
+		}, {
+			key: 'done',
+			value: function done() {
+				var change = new AnnotationChange(this._changes);
+				if (change.empty) return this._parent;
+
+				if (this._parent._state != ANNOTATIONS) {
+					this._parent._flush();
+					this._parent._state = ANNOTATIONS;
+				}
+
+				this._parent._annotationChange = AnnotationChange.merge(this._parent._annotationChange, new AnnotationChange(this._changes));
+
+				return this._parent;
+			}
+		}]);
+
+		return AnnotationUpdater;
 	}();
 
 	module.exports = StringDelta;
@@ -1967,12 +2101,270 @@ return /******/ (function(modules) { // webpackBootstrap
 		return Delete;
 	}();
 
+	var AnnotationUpdate = function () {
+		function AnnotationUpdate(change) {
+			_classCallCheck(this, AnnotationUpdate);
+
+			this.change = change;
+		}
+
+		_createClass(AnnotationUpdate, [{
+			key: 'apply',
+			value: function apply(handler) {
+				handler.updateAnnotations(this.change);
+			}
+		}, {
+			key: 'invert',
+			value: function invert() {
+				return new AnnotationUpdate(this.change.invert());
+			}
+		}, {
+			key: 'toString',
+			value: function toString() {
+				return 'AnnotationUpdate{' + this.change + '}';
+			}
+		}]);
+
+		return AnnotationUpdate;
+	}();
+
 	exports.Retain = Retain;
 	exports.Insert = Insert;
 	exports.Delete = Delete;
+	exports.AnnotationUpdate = AnnotationUpdate;
 
 /***/ },
 /* 24 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	var ops = __webpack_require__(23);
+
+	/**
+	 * Decsribes several changes to annotations.
+	 */
+
+	var AnnotationChange = function () {
+		function AnnotationChange(changes) {
+			_classCallCheck(this, AnnotationChange);
+
+			this._changes = changes;
+
+			this.length = this.keys().length;
+		}
+
+		_createClass(AnnotationChange, [{
+			key: 'keys',
+			value: function keys() {
+				return Object.keys(this._changes);
+			}
+		}, {
+			key: 'forEach',
+			value: function forEach(callback) {
+				var _this = this;
+
+				this.keys().forEach(function (key) {
+					var change = _this._changes[key];
+					callback.call(null, key, change.oldValue, change.newValue);
+				});
+			}
+		}, {
+			key: 'containsKey',
+			value: function containsKey(key) {
+				return !!this._changes[key];
+			}
+		}, {
+			key: 'get',
+			value: function get(key) {
+				var change = this._changes[key];
+				return change ? change.newValue : null;
+			}
+		}, {
+			key: 'getChange',
+			value: function getChange(key) {
+				return this._changes[key];
+			}
+		}, {
+			key: 'isRemoval',
+			value: function isRemoval(key) {
+				var change = this._changes[key];
+				return change ? change.newValue === null : false;
+			}
+		}, {
+			key: 'invert',
+			value: function invert() {
+				var result = {};
+				this.forEach(function (key, oldValue, newValue) {
+					result[key] = {
+						oldValue: newValue,
+						newValue: oldValue
+					};
+				});
+
+				return new AnnotationChange(result);
+			}
+		}, {
+			key: 'mergeWith',
+			value: function mergeWith(other) {
+				var result = {};
+				this.forEach(function (key, oldValue, newValue) {
+					result[key] = {
+						oldValue: oldValue,
+						newValue: newValue
+					};
+				});
+
+				other.forEach(function (key, oldValue, newValue) {
+					var current = result[key];
+					var change = {
+						oldValue: oldValue,
+						newValue: newValue
+					};
+
+					if (current) {
+						if (current.newValue == oldValue) {
+							/*
+	       * Merge changes if the last change has the same new value
+	       * this change says is its old value.
+	       */
+							change.oldValue = current.oldValue;
+						} else if (!newValue && current.newValue) {
+							/*
+	       * The changes indicates a removal but does not seem to
+	       * be a continuation of the previous one. Let the current
+	       * value win.
+	       */
+							return;
+						}
+					}
+
+					if (change.oldValue != change.newValue) {
+						result[key] = change;
+					} else {
+						delete result[key];
+					}
+				});
+
+				return new AnnotationChange(result);
+			}
+		}, {
+			key: 'toString',
+			value: function toString() {
+				var items = [];
+				this.forEach(function (key, oldValue, newValue) {
+					items.push(key + '=' + oldValue + ' -> ' + newValue);
+				});
+				return '[' + items.join(', ') + ']';
+			}
+		}, {
+			key: 'empty',
+			get: function get() {
+				return this.length === 0;
+			}
+		}], [{
+			key: 'merge',
+			value: function merge(first, second) {
+				if (!first) return second;
+				if (!second) return first;
+
+				return first.mergeWith(second);
+			}
+		}]);
+
+		return AnnotationChange;
+	}();
+
+	var AnnotationNormalizingDelta = function () {
+		function AnnotationNormalizingDelta(delta, source) {
+			_classCallCheck(this, AnnotationNormalizingDelta);
+
+			this.delta = delta;
+			this.source = source;
+			this.tracker = {};
+		}
+
+		_createClass(AnnotationNormalizingDelta, [{
+			key: 'retain',
+			value: function retain(count) {
+				this.flush();
+				this.delta.retain(count);
+			}
+		}, {
+			key: 'insert',
+			value: function insert(s) {
+				this.flush();
+				this.delta.insert(s);
+			}
+		}, {
+			key: 'delete',
+			value: function _delete(s) {
+				this.delta.delete(s);
+			}
+		}, {
+			key: 'done',
+			value: function done() {
+				this.flush();
+				return this.delta.done();
+			}
+		}, {
+			key: 'updateAnnotations',
+			value: function updateAnnotations(changes) {
+				this.flush();
+				this.delta.updateAnnotations(changes);
+			}
+		}, {
+			key: 'flush',
+			value: function flush() {
+				var _this2 = this;
+
+				var change = this.source();
+				if (!change || change.empty) return;
+
+				var updater = this.delta.updateAnnotations();
+				change.forEach(function (key, oldValue, newValue) {
+					var previous = _this2.tracker[key];
+
+					if (newValue === null) {
+						// This annotation key is being removed
+						delete _this2.tracker[key];
+						if (previous) {
+							if (previous.newValue == oldValue) {
+								updater.remove(key, previous.newValue);
+							}
+						} else {
+							updater.remove(key, oldValue);
+						}
+					} else {
+						// Annotation is being changed
+						if (previous) {
+							updater.set(key, previous.newValue, newValue);
+						} else {
+							updater.set(key, oldValue, newValue);
+						}
+
+						_this2.tracker[key] = {
+							oldValue: oldValue,
+							newValue: newValue
+						};
+					}
+				});
+				updater.done();
+			}
+		}]);
+
+		return AnnotationNormalizingDelta;
+	}();
+
+	exports.AnnotationChange = AnnotationChange;
+	exports.AnnotationNormalizingDelta = AnnotationNormalizingDelta;
+
+/***/ },
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -1981,6 +2373,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	var StringDelta = __webpack_require__(22);
 	var ops = __webpack_require__(23);
 
+	var annotations = __webpack_require__(24);
+	var AnnotationChange = annotations.AnnotationChange;
+
 	/**
 	 * Main transformation for strings.
 	 */
@@ -1988,8 +2383,18 @@ return /******/ (function(modules) { // webpackBootstrap
 		left = new OperationIterator(left);
 		right = new OperationIterator(right);
 
-		var deltaLeft = new StringDelta();
-		var deltaRight = new StringDelta();
+		var leftAnnotations = void 0;
+		var rightAnnotations = void 0;
+		var deltaLeft = new annotations.AnnotationNormalizingDelta(new StringDelta(), function () {
+			var change = leftAnnotations;
+			leftAnnotations = null;
+			return change;
+		});
+		var deltaRight = new annotations.AnnotationNormalizingDelta(new StringDelta(), function () {
+			var change = rightAnnotations;
+			rightAnnotations = null;
+			return change;
+		});
 
 		function handleRetain(op1, op2) {
 			var length1 = op1.length;
@@ -2058,17 +2463,25 @@ return /******/ (function(modules) { // webpackBootstrap
 					// Same length, simply delete
 					deltaRight.delete(_value);
 				}
+			} else if (op2 instanceof ops.AnnotationUpdate) {
+				rightAnnotations = AnnotationChange.merge(rightAnnotations, op2.change);
+				left.back();
 			}
 		}
 
 		function handleInsert(op1, op2) {
-			var value1 = op1.value;
-			var length1 = op1.value.length;
+			if (op2 instanceof ops.AnnotationUpdate) {
+				rightAnnotations = AnnotationChange.merge(rightAnnotations, op2.change);
+				left.back();
+			} else {
+				var value1 = op1.value;
+				var length1 = op1.value.length;
 
-			deltaLeft.insert(value1);
-			deltaRight.retain(length1);
+				deltaLeft.insert(value1);
+				deltaRight.retain(length1);
 
-			right.back();
+				right.back();
+			}
 		}
 
 		function handleDelete(op1, op2) {
@@ -2128,6 +2541,21 @@ return /******/ (function(modules) { // webpackBootstrap
 				} else {
 					// Do nothing
 				}
+			} else if (op2 instanceof ops.AnnotationUpdate) {
+				rightAnnotations = AnnotationChange.merge(rightAnnotations, op2.change);
+				left.back();
+			}
+		}
+
+		function handleAnnotationUpdate(op1, op2) {
+			var change1 = op1.change;
+			leftAnnotations = AnnotationChange.merge(leftAnnotations, change1);
+
+			if (op2 instanceof ops.AnnotationUpdate) {
+				var change2 = op2.change;
+				rightAnnotations = AnnotationChange.merge(rightAnnotations, change2);
+			} else {
+				right.back();
 			}
 		}
 
@@ -2143,6 +2571,8 @@ return /******/ (function(modules) { // webpackBootstrap
 					handleInsert(op1, op2);
 				} else if (op1 instanceof ops.Delete) {
 					handleDelete(op1, op2);
+				} else if (op1 instanceof ops.AnnotationUpdate) {
+					handleAnnotationUpdate(op1, op2);
 				}
 			} else {
 				/*
@@ -2178,7 +2608,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 25 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -2186,6 +2616,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var CompoundOperation = __webpack_require__(7);
 	var ops = __webpack_require__(23);
 	var StringDelta = __webpack_require__(22);
+	var AnnotationChange = __webpack_require__(24).AnnotationChange;
 
 	/**
 	 * Turn operations into a string.
@@ -2194,97 +2625,60 @@ return /******/ (function(modules) { // webpackBootstrap
 		var result = [];
 		CompoundOperation.asArray(op).forEach(function (subOp) {
 			if (subOp instanceof ops.Retain) {
-				result.push('__' + subOp.length);
+				result.push(['retain', subOp.length]);
 			} else if (subOp instanceof ops.Insert) {
-				result.push('++\'' + subOp.value.replace(/'/g, '\\\'') + '\'');
+				result.push(['insert', subOp.value]);
 			} else if (subOp instanceof ops.Delete) {
-				result.push('--\'' + subOp.value.replace(/'/g, '\\\'') + '\'');
+				result.push(['delete', subOp.value]);
+			} else if (subOp instanceof ops.AnnotationUpdate) {
+				result.push(['annotations', subOp.change._changes]);
 			} else {
 				throw new Error('Unsupported operation: ' + subOp);
 			}
 		});
 
-		return result.length === 0 ? '' : result.join(';') + ';';
+		return result;
 	};
 
 	/**
 	 * Turn a JSON string into operations we can work with.
 	 */
 	exports.fromJSON = function (input) {
+		if (!Array.isArray(input)) {
+			throw new Error('Given input is not an array, got: ' + input);
+		}
+
 		var delta = new StringDelta();
-
-		var i = 0;
-		var len = input.length;
-
-		function nextIs(c) {
-			if (++i >= len) {
-				throw new Error('Invalid operation, no more characters to read');
+		input.forEach(function (op) {
+			switch (op[0]) {
+				case 'retain':
+					delta.retain(op[1]);
+					break;
+				case 'insert':
+					delta.insert(op[1]);
+					break;
+				case 'delete':
+					delta.delete(op[1]);
+					break;
+				case 'annotations':
+					delta.updateAnnotations(new AnnotationChange(op[1]));
+					break;
+				default:
+					throw new Error('Unknown operation: ' + op);
 			}
-
-			if (input.charAt(i) !== c) {
-				throw new Error('Invalid operation, expected ' + c + ' but got ' + input.charAt(i));
-			}
-
-			i++;
-		}
-
-		function readUntilEnd(useQuotes) {
-			var buffer = [];
-			var quoted = false;
-
-			while (i < len) {
-				var c0 = input.charAt(i);
-				if (c0 === ';' && !quoted) {
-					return buffer.join('');
-				} else if (c0 === '\\' && quoted) {
-					if (input.charAt(i + 1) === '\'') {
-						buffer.push('\'');
-
-						i += 1;
-					} else {
-						buffer.push('\\');
-					}
-				} else if (c0 === '\'' && useQuotes) {
-					quoted = !quoted;
-				} else {
-					buffer.push(c0);
-				}
-
-				i++;
-			}
-
-			throw new Error('Reached end of stream before end of operation');
-		}
-
-		while (i < len) {
-			var c = input.charAt(i);
-			if (c === '_') {
-				nextIs('_');
-				delta.retain(parseInt(readUntilEnd(false)));
-			} else if (c === '+') {
-				nextIs('+');
-				delta.insert(readUntilEnd(true));
-			} else if (c === '-') {
-				nextIs('-');
-				delta.delete(readUntilEnd(true));
-			} else {
-				throw new Error('Unknown operation started with: ' + c);
-			}
-
-			i++;
-		}
+		});
 
 		return delta.done();
 	};
 
 /***/ },
-/* 26 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var CombinedType = __webpack_require__(27);
-	var CombinedDelta = __webpack_require__(32);
+	var CombinedType = __webpack_require__(28);
+	var CombinedDelta = __webpack_require__(33);
 
 	exports.CombinedType = CombinedType;
 	exports.newType = function (options) {
@@ -2297,7 +2691,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 27 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -2316,9 +2710,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	var string = __webpack_require__(19);
 	var list = __webpack_require__(12);
 
-	var _compose = __webpack_require__(28);
-	var _transform = __webpack_require__(30);
-	var serialization = __webpack_require__(31);
+	var _compose = __webpack_require__(29);
+	var _transform = __webpack_require__(31);
+	var serialization = __webpack_require__(32);
 
 	var CombinedType = function (_OTType) {
 		_inherits(CombinedType, _OTType);
@@ -2378,14 +2772,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = CombinedType;
 
 /***/ },
-/* 28 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	var OperationIterator = __webpack_require__(6);
 	var CompoundOperation = __webpack_require__(7);
-	var ops = __webpack_require__(29);
+	var ops = __webpack_require__(30);
 
 	function idComparator(a, b) {
 		return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
@@ -2458,7 +2852,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 29 */
+/* 30 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -2499,14 +2893,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.Update = Update;
 
 /***/ },
-/* 30 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	var OperationIterator = __webpack_require__(6);
 	var CompoundOperation = __webpack_require__(7);
-	var ops = __webpack_require__(29);
+	var ops = __webpack_require__(30);
 
 	function idComparator(a, b) {
 		return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
@@ -2560,8 +2954,8 @@ return /******/ (function(modules) { // webpackBootstrap
 						}
 
 						var transformed = type.transform(op1.operation, op2.operation);
-						deltaLeft.add(new ops.Update(op1.id, op1.type, transformed.left));
-						deltaLeft.add(new ops.Update(op2.id, op2.type, transformed.right));
+						deltaLeft.push(new ops.Update(op1.id, op1.type, transformed.left));
+						deltaRight.push(new ops.Update(op2.id, op2.type, transformed.right));
 					}
 
 					handled = true;
@@ -2588,14 +2982,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 31 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	var CompoundOperation = __webpack_require__(7);
-	var CombinedDelta = __webpack_require__(32);
-	var ops = __webpack_require__(29);
+	var CombinedDelta = __webpack_require__(33);
+	var ops = __webpack_require__(30);
 
 	/**
 	 * Turn operations into an array with JSON friendly values.
@@ -2634,7 +3028,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 32 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -2644,7 +3038,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 	var CompoundOperation = __webpack_require__(7);
-	var ops = __webpack_require__(29);
+	var ops = __webpack_require__(30);
 
 	var UpdateDelta = function () {
 		function UpdateDelta() {
@@ -2685,7 +3079,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = UpdateDelta;
 
 /***/ },
-/* 33 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -2694,7 +3088,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var EventEmitter = __webpack_require__(34);
+	var EventEmitter = __webpack_require__(35);
 
 	var SYNCHRONIZED = 0;
 	var AWAITING_CONFIRM = 1;
@@ -2719,10 +3113,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  *   synchronization provider, usually an instance that will send and
 	  *   receive {@link TaggedOperation}s from a central server
 	  */
-		function Editor(id, sync) {
+		function Editor(sync) {
 			_classCallCheck(this, Editor);
 
-			this.id = id;
 			this.type = sync.type;
 			this.sync = sync;
 
@@ -2732,7 +3125,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			this.events = new EventEmitter();
 
 			this.composing = null;
-			this.isComposing = false;
+			this.composeDepth = 0;
 		}
 
 		_createClass(Editor, [{
@@ -2743,6 +3136,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				return this.sync.connect(this.receive.bind(this)).then(function (initial) {
 					_this.parentHistoryId = initial.historyId;
 					_this.current = initial.operation;
+					_this.id = initial.token;
 
 					_this.sync.addEventListener('change', _this.receive.bind(_this));
 
@@ -2757,12 +3151,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		}, {
 			key: 'performEdit',
 			value: function performEdit(callback) {
-				this.isComposing = true;
+				this.composeDepth++;
 				try {
 					return callback();
 				} finally {
-					this.isComposing = false;
-					if (this.composing) {
+					if (--this.composeDepth === 0 && this.composing) {
 						this.apply(this.composing);
 						this.composing = null;
 					}
@@ -2777,6 +3170,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			key: 'on',
 			value: function on(event, listener) {
 				return this.addEventListener(event, listener);
+			}
+		}, {
+			key: 'removeEventListener',
+			value: function removeEventListener(event, listener) {
+				this.events.removeListener(event, listener);
 			}
 		}, {
 			key: 'receive',
@@ -2884,7 +3282,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					throw 'Editor has not been connected';
 				}
 
-				if (this.isComposing) {
+				if (this.composeDepth > 0) {
 					// Current composing several edits, just compose without sending
 					if (this.composing) {
 						this.composing = this.type.compose(this.composing, op);
@@ -2966,7 +3364,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Editor;
 
 /***/ },
-/* 34 */
+/* 35 */
 /***/ function(module, exports) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -3274,7 +3672,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 35 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3283,8 +3681,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var locallock = __webpack_require__(36);
-	var TaggedOperation = __webpack_require__(39);
+	var locallock = __webpack_require__(37);
+	var TaggedOperation = __webpack_require__(40);
 
 	/**
 	 * Helper for keeping several editors in sync.
@@ -3299,14 +3697,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	  * @param [lock]
 	  *   optional lock function, see {@link LocalLock} for details about
 	  *   how to implement locks.
+	  * @param [idGenerator]
+	  *   optional function that returns a unique session id. The default
+	  *   function uses the current timestamp and a random number as the
+	  *   id.
 	  */
-		function EditorControl(history, lock) {
+		function EditorControl(history, lock, idGenerator) {
 			_classCallCheck(this, EditorControl);
 
 			this.history = history;
 			this.type = history.type;
 
 			this.lock = lock || locallock();
+			this.idGenerator = idGenerator || function () {
+				var now = Date.now();
+				var random = Math.floor(Math.random() * 50000);
+
+				return now.toString(36) + '-' + random.toString(36);
+			};
 		}
 
 		/**
@@ -3325,13 +3733,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				return this.history.latest().then(function (id) {
 					return _this.history.until(id + 1).then(function (items) {
+						var sessionId = _this.idGenerator();
+
 						var composer = _this.history.type.newComposer();
 						items.forEach(function (item) {
 							composer.add(item);
 						});
 
 						var composed = composer.done();
-						return new TaggedOperation(id, null, composed);
+						return new TaggedOperation(id, sessionId, composed);
 					});
 				});
 			}
@@ -3390,7 +3800,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = EditorControl;
 
 /***/ },
-/* 36 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(setImmediate) {'use strict';
@@ -3477,13 +3887,13 @@ return /******/ (function(modules) { // webpackBootstrap
 			return lock.acquire(cb);
 		};
 	};
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(37).setImmediate))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38).setImmediate))
 
 /***/ },
-/* 37 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(setImmediate, clearImmediate) {var nextTick = __webpack_require__(38).nextTick;
+	/* WEBPACK VAR INJECTION */(function(setImmediate, clearImmediate) {var nextTick = __webpack_require__(39).nextTick;
 	var apply = Function.prototype.apply;
 	var slice = Array.prototype.slice;
 	var immediateIds = {};
@@ -3559,10 +3969,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate : function(id) {
 	  delete immediateIds[id];
 	};
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(37).setImmediate, __webpack_require__(37).clearImmediate))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38).setImmediate, __webpack_require__(38).clearImmediate))
 
 /***/ },
-/* 38 */
+/* 39 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -3700,7 +4110,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 39 */
+/* 40 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -3722,7 +4132,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = TaggedOperation;
 
 /***/ },
-/* 40 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(setImmediate) {'use strict';
@@ -3735,7 +4145,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var EventEmitter = __webpack_require__(34);
+	var EventEmitter = __webpack_require__(35);
 
 	/*
 	 * Synchronization between editor instances. Usually by syncing with a
@@ -3897,7 +4307,7 @@ return /******/ (function(modules) { // webpackBootstrap
 							_this2.promises.length = 0;
 						});
 					}).catch(function (e) {
-						console.log('Error occured during flush', e.stack);
+						console.log('Error occured during flush', e.stack || e);
 					});
 				});
 			}
@@ -3923,10 +4333,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	}(OperationSync);
 
 	module.exports = OperationSync;
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(37).setImmediate))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38).setImmediate))
 
 /***/ },
-/* 41 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3939,8 +4349,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var OperationSync = __webpack_require__(40);
-	var TaggedOperation = __webpack_require__(39);
+	var OperationSync = __webpack_require__(41);
+	var TaggedOperation = __webpack_require__(40);
 
 	var SocketIoSync = function (_OperationSync) {
 		_inherits(SocketIoSync, _OperationSync);
@@ -4007,7 +4417,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = SocketIoSync;
 
 /***/ },
-/* 42 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -4016,15 +4426,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var EventEmitter = __webpack_require__(34);
-	var events = __webpack_require__(43);
+	var EventEmitter = __webpack_require__(35);
+	var events = __webpack_require__(44);
 
-	var SharedMap = __webpack_require__(44);
-	var SharedList = __webpack_require__(47);
-	var SharedString = __webpack_require__(48);
+	var SharedMap = __webpack_require__(45);
+	var SharedList = __webpack_require__(48);
+	var SharedString = __webpack_require__(49);
 
 	var CompoundOperation = __webpack_require__(7);
-	var combined = __webpack_require__(26);
+	var combined = __webpack_require__(27);
 
 	var Model = function () {
 		function Model(editor) {
@@ -4043,10 +4453,14 @@ return /******/ (function(modules) { // webpackBootstrap
 			this.values = {};
 			this.objects = {};
 
-			editor.addEventListener('change', function (change) {
-				if (change.local) return;
+			this.events = new EventEmitter();
 
-				change.operation.apply(_this._changeHandler);
+			editor.addEventListener('change', function (change) {
+				if (!change.local) {
+					change.operation.apply(_this._changeHandler);
+				}
+
+				_this.events.emit('change', change);
 			});
 
 			this._changeHandler = {
@@ -4084,6 +4498,12 @@ return /******/ (function(modules) { // webpackBootstrap
 			});
 
 			this.root = this._getObject('root', 'map');
+			this.root.on('valueChanged', function (data) {
+				return _this.events.emit('valueChanged', data);
+			});
+			this.root.on('valueRemoved', function (data) {
+				return _this.events.emit('valueRemove', data);
+			});
 		}
 
 		_createClass(Model, [{
@@ -4128,8 +4548,13 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.editor.close();
 			}
 		}, {
-			key: 'apply',
-			value: function apply(id, type, op) {
+			key: 'performEdit',
+			value: function performEdit(callback) {
+				this.editor.performEdit(callback);
+			}
+		}, {
+			key: '_apply',
+			value: function _apply(id, type, op) {
 				// Compose together with the current value for the object
 				if (typeof this.values[id] !== 'undefined') {
 					var current = this.values[id];
@@ -4140,19 +4565,27 @@ return /******/ (function(modules) { // webpackBootstrap
 					this.values[id] = op;
 				}
 
-				// Ask the editor to apply the operation and sync it with other editors
-				this.remote = false;
-				this.editor.apply(combined.delta().update(id, type, op).done());
-
 				// Ask the object to apply the operation as a local one
 				var editor = this.editors[id];
 				if (editor) {
+					this.remote = false;
 					editor.apply({
 						operation: op,
 						local: true,
 						remote: false
 					});
+
+					editor.queueEvent('change', op);
 				}
+
+				// Ask the editor to apply the operation and sync it with other editors
+				this.editor.apply(combined.delta().update(id, type, op).done());
+			}
+		}, {
+			key: 'getObject',
+			value: function getObject(id) {
+				var object = this.objects[id];
+				return object || null;
 			}
 		}, {
 			key: '_queueEvent',
@@ -4189,6 +4622,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 					events: new EventEmitter(),
 
+					model: self,
+
 					getObject: function getObject(id, type) {
 						return self._getObject(id, type);
 					},
@@ -4202,7 +4637,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					},
 
 					send: function send(op) {
-						self.apply(this.objectId, this.objectType, op);
+						self._apply(this.objectId, this.objectType, op);
 					},
 					apply: function apply(op, local) {
 						throw new Error('No hook for applying data registered');
@@ -4232,12 +4667,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		}, {
 			key: 'addEventListener',
 			value: function addEventListener(event, listener) {
-				return this.root.addEventListener(event, listener);
+				return this.events.on(event, listener);
 			}
 		}, {
 			key: 'on',
 			value: function on(event, listener) {
-				return this.root.on(event, listener);
+				return this.events.on(event, listener);
+			}
+		}, {
+			key: 'removeEventListener',
+			value: function removeEventListener(event, listener) {
+				this.events.removeListener(event, listener);
 			}
 		}], [{
 			key: 'defaultType',
@@ -4252,7 +4692,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Model;
 
 /***/ },
-/* 43 */
+/* 44 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -4285,7 +4725,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.DELETE = 'delete';
 
 /***/ },
-/* 44 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -4298,9 +4738,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var SharedObject = __webpack_require__(45);
+	var SharedObject = __webpack_require__(46);
 	var map = __webpack_require__(1);
-	var dataValues = __webpack_require__(46);
+	var dataValues = __webpack_require__(47);
 
 	var SharedMap = function (_SharedObject) {
 		_inherits(SharedMap, _SharedObject);
@@ -4356,12 +4796,20 @@ return /******/ (function(modules) { // webpackBootstrap
 		}, {
 			key: 'get',
 			value: function get(key, factory) {
+				var _this3 = this;
+
 				var value = this.values[key];
 				if (value) return value;
 
 				if (factory) {
-					value = this.values[key] = factory();
-					this.editor.send(map.delta().set(key, dataValues.toData(null), dataValues.toData(value)).done());
+					(function () {
+						var model = _this3.editor.model;
+						model.performEdit(function () {
+							value = _this3.values[key] = factory(model);
+
+							_this3.editor.send(map.delta().set(key, dataValues.toData(null), dataValues.toData(value)).done());
+						});
+					})();
 				}
 
 				return value || null;
@@ -4392,7 +4840,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = SharedMap;
 
 /***/ },
-/* 45 */
+/* 46 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -4420,6 +4868,11 @@ return /******/ (function(modules) { // webpackBootstrap
 				return this;
 			}
 		}, {
+			key: 'removeEventListener',
+			value: function removeEventListener(event, listener) {
+				return this.editor.events.removeListener(event, listener);
+			}
+		}, {
 			key: 'objectId',
 			get: function get() {
 				return this.editor.objectId;
@@ -4437,12 +4890,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = SharedObject;
 
 /***/ },
-/* 46 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var SharedObject = __webpack_require__(45);
+	var SharedObject = __webpack_require__(46);
 
 	/**
 	 * Convert from a data value into a value usable in the model API.
@@ -4476,7 +4929,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 47 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -4489,9 +4942,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var SharedObject = __webpack_require__(45);
+	var SharedObject = __webpack_require__(46);
 	var list = __webpack_require__(12);
-	var dataValues = __webpack_require__(46);
+	var dataValues = __webpack_require__(47);
+
+	var isInteger = Number.isInteger || function (value) {
+		return typeof value === 'number' && isFinite(value) && Math.floor(value) === value;
+	};
 
 	var SharedList = function (_SharedObject) {
 		_inherits(SharedList, _SharedObject);
@@ -4510,8 +4967,10 @@ return /******/ (function(modules) { // webpackBootstrap
 				delete: function _delete(value) {
 					throw new Error('Invalid current value, must only contain inserts');
 				},
-				insert: function insert(value) {
-					self.items.push(value);
+				insert: function insert(values) {
+					values.forEach(function (v) {
+						self.items.push(dataValues.fromData(editor, v));
+					});
 				}
 			});
 
@@ -4565,6 +5024,15 @@ return /******/ (function(modules) { // webpackBootstrap
 				return this.items[index];
 			}
 		}, {
+			key: 'indexOf',
+			value: function indexOf(object) {
+				for (var i = 0; i < this.items.length; i++) {
+					if (this.items[i] === object) return i;
+				}
+
+				return -1;
+			}
+		}, {
 			key: 'clear',
 			value: function clear() {
 				var delta = list.delta();
@@ -4594,6 +5062,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		}, {
 			key: 'insert',
 			value: function insert(index, item) {
+				if (!isInteger(index)) {
+					throw new Error('Index must be an integer, was: ' + index);
+				}
+
+				if (index > this.items.length) {
+					throw new Error('Can not insert at ' + index + ', only ' + this.items.length + ' items in list');
+				}
+				if (index < 0) {
+					throw new Error('Can not insert at ' + index + ', index must not be negative');
+				}
+
 				var length = this.items.length;
 				this.editor.send(list.delta().retain(index).insert(dataValues.toData(item)).retain(length - index).done());
 			}
@@ -4601,6 +5080,18 @@ return /******/ (function(modules) { // webpackBootstrap
 			key: 'insertAll',
 			value: function insertAll(index, items) {
 				var length = this.items.length;
+
+				if (!isInteger(index)) {
+					throw new Error('Index must be an integer, was: ' + index);
+				}
+
+				if (index > this.items.length) {
+					throw new Error('Can not insert at ' + index + ', only ' + this.items.length + ' items in list');
+				}
+				if (index < 0) {
+					throw new Error('Can not insert at ' + index + ', index must not be negative');
+				}
+
 				var delta = list.delta().retain(index);
 
 				items.forEach(function (item) {
@@ -4614,11 +5105,39 @@ return /******/ (function(modules) { // webpackBootstrap
 			key: 'remove',
 			value: function remove(index) {
 				var length = this.items.length;
+
+				if (!isInteger(index)) {
+					throw new Error('Index must be an integer, was: ' + index);
+				}
+
+				if (index >= length) {
+					throw new Error('Can not remove at ' + index + ', only ' + this.items.length + ' items in list');
+				}
+				if (index < 0) {
+					throw new Error('Can not remove at ' + index + ', index must not be negative');
+				}
+
 				this.editor.send(list.delta().retain(index).delete(dataValues.toData(this.items[index])).retain(length - index - 1).done());
 			}
 		}, {
 			key: 'removeRange',
 			value: function removeRange(fromIndex, toIndex) {
+				if (!isInteger(fromIndex)) {
+					throw new Error('fromIndex must be an integer, was: ' + fromIndex);
+				}
+
+				if (fromIndex < 0 || fromIndex > this.items.length) {
+					throw new Error('fromIndex must be between 0 and ' + (this.items.length - 1) + ', but was ' + fromIndex);
+				}
+
+				if (!isInteger(toIndex)) {
+					throw new Error('toIndex must be an integer, was: ' + toIndex);
+				}
+
+				if (toIndex < 0 || toIndex >= this.items.length) {
+					throw new Error('toIndex must be between 0 and ' + this.items.length + ', but was ' + toIndex);
+				}
+
 				var length = this.items.length;
 				var delta = list.delta().retain(fromIndex);
 
@@ -4632,10 +5151,34 @@ return /******/ (function(modules) { // webpackBootstrap
 				this.editor.send(delta.done());
 			}
 		}, {
+			key: 'removeObject',
+			value: function removeObject(obj) {
+				var idx = this.indexOf(obj);
+				if (idx < 0) return;
+
+				this.remove(idx);
+			}
+		}, {
 			key: 'set',
 			value: function set(index, value) {
+				if (!isInteger(index)) {
+					throw new Error('Index must be an integer, was: ' + index);
+				}
+
 				var length = this.items.length;
+				if (index > length) {
+					throw new Error('Can not set at ' + index + ', only ' + length + ' items in list');
+				}
+				if (index < 0) {
+					throw new Error('Can not set at ' + index + ', index must not be negative');
+				}
+
 				this.editor.send(list.delta().retain(index).insert(dataValues.toData(value)).delete(dataValues.toData(this.items[index])).retain(length - index - 1).done());
+			}
+		}, {
+			key: 'asArray',
+			value: function asArray() {
+				return this.items.slice(0);
 			}
 		}, {
 			key: 'length',
@@ -4650,7 +5193,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = SharedList;
 
 /***/ },
-/* 48 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -4663,9 +5206,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var diff = __webpack_require__(49);
+	var diff = __webpack_require__(50);
 
-	var SharedObject = __webpack_require__(45);
+	var SharedObject = __webpack_require__(46);
 	var string = __webpack_require__(19);
 
 	var SharedString = function (_SharedObject) {
@@ -4675,8 +5218,6 @@ return /******/ (function(modules) { // webpackBootstrap
 			_classCallCheck(this, SharedString);
 
 			var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(SharedString).call(this, editor));
-
-			console.log('current', editor.current);
 
 			_this.value = '';
 			var self = _this;
@@ -4855,7 +5396,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = SharedString;
 
 /***/ },
-/* 49 */
+/* 50 */
 /***/ function(module, exports) {
 
 	/**
@@ -5431,7 +5972,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 50 */
+/* 51 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -5451,52 +5992,71 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		events.forEach(function (event) {
-			ignore = true;
-			try {
-				element.addEventListener(event, snapshot);
-			} finally {
-				ignore = false;
-			}
+			element.addEventListener(event, snapshot);
 		});
 
 		// TODO: Smarter way to track selection movememt
-		string.on('insert', function (e) {
+		function insertText(e) {
 			if (e.local) return;
 
-			var start = element.selectionStart;
-			var end = element.selectionEnd;
+			ignore = true;
+			try {
+				var start = element.selectionStart;
+				var end = element.selectionEnd;
 
-			var length = e.value.length;
+				var length = e.value.length;
 
-			element.value = element.value.substring(0, e.index) + e.value + element.value.substring(e.index);
+				element.value = element.value.substring(0, e.index) + e.value + element.value.substring(e.index);
 
-			// Transform the selection
-			if (start > e.index) start += length;
-			if (end > e.index) end += length;
+				// Transform the selection
+				if (start > e.index) start += length;
+				if (end > e.index) end += length;
 
-			element.selectionStart = start;
-			element.selectionEnd = end;
-		});
+				element.selectionStart = start;
+				element.selectionEnd = end;
+			} finally {
+				ignore = false;
+			}
+		}
 
-		string.on('delete', function (e) {
+		function deleteText(e) {
 			if (e.local) return;
 
-			var start = element.selectionStart;
-			var end = element.selectionEnd;
+			ignore = true;
+			try {
+				var start = element.selectionStart;
+				var end = element.selectionEnd;
 
-			var length = e.value.length;
+				var length = e.value.length;
 
-			element.value = element.value.substring(0, e.fromIndex) + element.value.substring(e.toIndex);
+				element.value = element.value.substring(0, e.fromIndex) + element.value.substring(e.toIndex);
 
-			// Transform the selection
-			if (start > e.fromIndex) start = Math.max(e.fromIndex, start - length);
-			if (end > e.fromIndex) end = Math.max(e.fromIndex, end - length);
+				// Transform the selection
+				if (start > e.fromIndex) start = Math.max(e.fromIndex, start - length);
+				if (end > e.fromIndex) end = Math.max(e.fromIndex, end - length);
 
-			element.selectionStart = start;
-			element.selectionEnd = end;
-		});
+				element.selectionStart = start;
+				element.selectionEnd = end;
+			} finally {
+				ignore = false;
+			}
+		}
+
+		string.on('insert', insertText);
+		string.on('delete', deleteText);
 
 		element.value = string.get();
+
+		return {
+			disconnect: function disconnect() {
+				string.removeEventListener('insert', insertText);
+				string.removeEventListener('delete', deleteText);
+
+				events.forEach(function (event) {
+					element.removeEventListener(event, snapshot);
+				});
+			}
+		};
 	}
 
 	module.exports = bind;

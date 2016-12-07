@@ -24,8 +24,10 @@ class SharedList extends SharedObject {
 				throw new Error('Invalid current value, must only contain inserts');
 			},
 
-			insert(value) {
-				self.items.push(value);
+			insert(values) {
+				values.forEach(v => {
+					self.items.push(dataValues.fromData(editor, v));
+				});
 			}
 		});
 

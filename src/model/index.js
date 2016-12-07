@@ -167,6 +167,8 @@ class Model {
 
 			events: new EventEmitter(),
 
+			model: self,
+
 			getObject(id, type) {
 				return self._getObject(id, type);
 			},

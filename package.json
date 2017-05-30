@@ -5,27 +5,23 @@
   "main": "src/index.js",
   "author": "",
   "license": "Apache-2.0",
+  "repository": "LevelFourAB/otter-js",
+  "scripts": {
+    "test": "node_modules/.bin/mocha test/**/*.test.js && node_modules/.bin/eslint *.js engine/**/*.js model/**/*.js operations/**/*.js",
+    "coverage": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha -- -R spec ./test/**/*.test.js"
+  },
   "devDependencies": {
-    "babel-core": "^6.11.4",
-    "babel-loader": "^6.2.4",
-    "babel-preset-es2015": "^6.9.0",
-    "chai": "^3.5.0",
-    "gulp": "^3.9.1",
-    "gulp-mocha": "^2.2.0",
-    "mocha": "^2.5.3",
+    "chai": "^4.0.0",
+    "coveralls": "^2.13.1",
+    "eslint": "^3.19.0",
+    "eslint-plugin-node": "^4.2.2",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.4.2",
     "socket.io": "^1.4.8",
     "socket.io-client": "^1.4.8",
     "webpack-stream": "^3.2.0"
   },
   "dependencies": {
     "fast-diff": "^1.0.1"
-  },
-  "jspm": {
-    "registry": "npm",
-    "main": "build/otter.js",
-    "format": "cjs",
-    "directories": {
-      "lib": "build"
-    }
   }
 }

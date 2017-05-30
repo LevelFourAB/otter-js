@@ -2,7 +2,7 @@
 
 const expect = require('chai').expect;
 const assert = require('chai').assert;
-const map = require('../../src/operations/map');
+const map = require('../../operations/map');
 
 const type = map.newType();
 

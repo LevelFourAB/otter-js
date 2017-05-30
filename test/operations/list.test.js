@@ -2,7 +2,7 @@
 
 const expect = require('chai').expect;
 const assert = require('chai').assert;
-const list = require('../../src/operations/list');
+const list = require('../../operations/list');
 
 const type = list.newType();
 

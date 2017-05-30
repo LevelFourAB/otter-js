@@ -2,13 +2,13 @@
 
 const expect = require('chai').expect;
 
-const OperationSync = require('../../src/engine/sync');
-const EditorControl = require('../../src/engine/editor-control');
-const InMemoryHistory = require('../../src/engine/in-memory-history');
-const Editor = require('../../src/engine/editor');
-const Model = require('../../src/model');
+const OperationSync = require('../../engine/sync');
+const EditorControl = require('../../engine/editor-control');
+const InMemoryHistory = require('../../engine/in-memory-history');
+const Editor = require('../../engine/editor');
+const Model = require('../../model');
 
-const combined = require('../../src/operations/combined');
+const combined = require('../../operations/combined');
 const type = combined.newType();
 
 describe('Model', function() {

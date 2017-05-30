@@ -2,7 +2,7 @@
 
 const expect = require('chai').expect;
 const assert = require('chai').assert;
-const string = require('../../src/operations/string');
+const string = require('../../operations/string');
 
 const type = string.newType();
 

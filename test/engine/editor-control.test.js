@@ -2,9 +2,9 @@
 
 const expect = require('chai').expect;
 
-const EditorControl = require('../../src/engine/editor-control');
-const InMemoryHistory = require('../../src/engine/in-memory-history');
-const string = require('../../src/operations/string');
+const EditorControl = require('../../engine/editor-control');
+const InMemoryHistory = require('../../engine/in-memory-history');
+const string = require('../../operations/string');
 
 describe('Editor Control', function() {
 	let control;

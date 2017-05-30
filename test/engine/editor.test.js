@@ -2,12 +2,12 @@
 
 const expect = require('chai').expect;
 
-const OperationSync = require('../../src/engine/sync');
-const EditorControl = require('../../src/engine/editor-control');
-const InMemoryHistory = require('../../src/engine/in-memory-history');
-const Editor = require('../../src/engine/editor');
+const OperationSync = require('../../engine/sync');
+const EditorControl = require('../../engine/editor-control');
+const InMemoryHistory = require('../../engine/in-memory-history');
+const Editor = require('../../engine/editor');
 
-const string = require('../../src/operations/string');
+const string = require('../../operations/string');
 const type = string.newType();
 
 describe('Editor', function() {

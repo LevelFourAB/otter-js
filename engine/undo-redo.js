@@ -134,7 +134,7 @@ class UndoRedoManager {
 
 		this._ignore = true;
 		try {
-			this.editor.apply(op);
+			this.editor.apply(op, true);
 		} finally {
 			this._ignore = false;
 		}
@@ -155,7 +155,7 @@ class UndoRedoManager {
 
 		this._ignore = true;
 		try {
-			this.editor.apply(op);
+			this.editor.apply(op, true);
 		} finally {
 			this._ignore = false;
 		}

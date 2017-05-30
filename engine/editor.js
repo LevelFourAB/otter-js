@@ -181,9 +181,9 @@ class Editor {
 
 	/**
 	 * Indicate that a local edit has been made and apply it to this editor,
-	 * synchroizing it with other editors.
+	 * synchronizing it with other editors.
 	 */
-	apply(op) {
+	apply(op, fromUndoRedo) {
 		if(typeof this.parentHistoryId === 'undefined') {
 			throw new Error('Editor has not been connected');
 		}
@@ -247,7 +247,7 @@ class Editor {
 		this.undoRedo.apply(op);
 		this.events.emit('change', {
 			operation: op,
-			local: true
+			local: ! fromUndoRedo
 		});
 	}
 

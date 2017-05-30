@@ -25,7 +25,7 @@ class MapDelta {
 		const current = this._values[key];
 		if(current) {
 			if(current.newValue != currentValue) {
-				throw 'Trying set value twice, but newValue of previous set does not match currentValue of this set';
+				throw new Error('Trying set value twice, but newValue of previous set does not match currentValue of this set');
 			}
 
 			current.newValue = newValue;

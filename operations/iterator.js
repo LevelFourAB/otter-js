@@ -32,7 +32,7 @@ class OperationIterator {
 	 */
 	next() {
 		if(this.index >= this._ops.length) {
-			throw 'No more operations available';
+			throw new Error('No more operations available');
 		}
 
 		let result = this._ops[this.index];
@@ -45,7 +45,7 @@ class OperationIterator {
 	 */
 	back() {
 		if(this.index === 0) {
-			throw 'Can not go back, iteration not started';
+			throw new Error('Can not go back, iteration not started');
 		}
 
 		this.index--;
@@ -56,7 +56,7 @@ class OperationIterator {
 	 */
 	replace(op) {
 		if(this.index === 0) {
-			throw 'Can not replace, iteration not started';
+			throw new Error('Can not replace, iteration not started');
 		}
 
 		this.index--;

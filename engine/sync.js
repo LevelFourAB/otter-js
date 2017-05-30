@@ -43,7 +43,7 @@ class OperationSync {
 	 *   the latest version of the document/model being edited
 	 */
 	connect() {
-		throw 'Not implemented';
+		throw new Error('Not implemented');
 	}
 
 	/**
@@ -52,7 +52,7 @@ class OperationSync {
 	 * @param {TaggedOperation} op
 	 */
 	send(op) {
-		throw 'Not implemented';
+		throw new Error('Not implemented');
 	}
 
 	/**

@@ -177,7 +177,7 @@ module.exports = function(left, right) {
 				deltaLeft.adopt(op1);
 				deltaRight.retain(items1.length);
 			} else {
-				throw 'Transformation failure, mismatch in operation. Current left operation: ' + op1.toString();
+				throw new Error('Transformation failure, mismatch in operation. Current left operation: ' + op1.toString());
 			}
 		}
 	}
@@ -190,7 +190,7 @@ module.exports = function(left, right) {
 			deltaRight.adopt(op2);
 			deltaLeft.retain(items2.length);
 		} else {
-			throw 'Transformation failure, mismatch in operation. Current right operation: ' + op2.toString();
+			throw new Error('Transformation failure, mismatch in operation. Current right operation: ' + op2.toString());
 		}
 	}
 

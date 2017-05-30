@@ -10,7 +10,7 @@ class UpdateDelta {
 
 	update(id, type, operation) {
 		if(this._ops[id]) {
-			throw 'Can not update id `' + id + '` several times';
+			throw new Error('Can not update id `' + id + '` several times');
 		}
 
 		this._ops[id] = new ops.Update(id, type, operation);

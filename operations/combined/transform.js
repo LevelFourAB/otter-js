@@ -47,14 +47,14 @@ module.exports = function(types, left, right) {
 				if(op1 instanceof ops.Update && op2 instanceof ops.Update) {
 
 					if(op1.type != op2.type) {
-						throw 'Can not compose, operations with id `' + op1.id +
+						throw new Error('Can not compose, operations with id `' + op1.id +
 							'` have different types: ' + op1.type + ' vs ' +
-							op2.type;
+							op2.type);
 					}
 
 					const type = types[op1.type];
 					if(! type) {
-						throw 'Can not compose, unknown type: ' + op1.type;
+						throw new Error('Can not compose, unknown type: ' + op1.type);
 					}
 
 					const transformed = type.transform(op1.operation, op2.operation);

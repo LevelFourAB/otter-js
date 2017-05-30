@@ -13,7 +13,7 @@ class CompoundOperation {
 	}
 
 	set operations(ops) {
-		throw 'Can not set operations';
+		throw new Error('Can not set operations');
 	}
 
 	apply(handler) {
@@ -35,7 +35,7 @@ class CompoundOperation {
 	}
 
 	toString() {
-		return "CompoundOperation[" + this._ops + ']';
+		return 'CompoundOperation[' + this._ops + ']';
 	}
 }
 

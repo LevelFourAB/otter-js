@@ -215,7 +215,7 @@ module.exports = function(left, right) {
 				deltaLeft.insert(value1);
 				deltaRight.retain(value1.length);
 			} else {
-				throw 'Transformation failure, mismatch in operation. Current left operation: ' + op1.toString();
+				throw new Error('Transformation failure, mismatch in operation. Current left operation: ' + op1.toString());
 			}
 		}
 	}
@@ -228,7 +228,7 @@ module.exports = function(left, right) {
 			deltaRight.insert(value2);
 			deltaLeft.retain(value2.length);
 		} else {
-			throw 'Transformation failure, mismatch in operation. Current right operation: ' + op2.toString();
+			throw new Error('Transformation failure, mismatch in operation. Current right operation: ' + op2.toString());
 		}
 	}
 

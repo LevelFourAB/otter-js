@@ -77,7 +77,7 @@ class SharedMap extends SharedObject {
 
 	set(key, value) {
 		if(value === null || typeof value === 'undefined') {
-			throw 'Value must not be null or undefined';
+			throw new Error('Value must not be null or undefined');
 		}
 
 		const old = this.values[key];

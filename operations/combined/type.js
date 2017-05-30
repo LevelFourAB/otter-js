@@ -27,7 +27,7 @@ class CombinedType extends OTType {
 		}
 
 		if(! type.transform || ! type.compose) {
-			throw 'Invalid type. Types must have a compose and transform function';
+			throw new Error('Invalid type. Types must have a compose and transform function');
 		}
 
 		this.types[id] = type;

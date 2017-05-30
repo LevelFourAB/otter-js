@@ -45,8 +45,7 @@ exports.fromJSON = function(json) {
 		switch(data[0])
 		{
 			case 'retain':
-				const length = data[1];
-				delta.retain(length);
+				delta.retain(data[1] /* length */);
 				break;
 			case 'insert':
 				delta.insertMultiple(data[1]);

@@ -40,10 +40,12 @@ exports.fromJSON = function(json) {
 	json.forEach(data => {
 		switch(data[0])
 		{
-			case "set":
+			case 'set':
+			{
 				const op = data[1];
 				result.push(new ops.Set(op.key, op.oldValue || null, op.newValue || null));
 				break;
+			}
 			default:
 				throw new Error('Unsupported type of operation: ' + data[0]);
 		}

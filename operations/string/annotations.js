@@ -1,7 +1,5 @@
 'use strict';
 
-const ops = require('./ops');
-
 /**
  * Decsribes several changes to annotations.
  */

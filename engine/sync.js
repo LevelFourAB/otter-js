@@ -131,6 +131,7 @@ class LocalSync extends OperationSync {
 					});
 				})
 				.catch(e => {
+					// eslint-disable-next-line no-console
 					console.log('Error occured during flush', e.stack || e);
 				});
 		});

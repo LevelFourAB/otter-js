@@ -1,7 +1,6 @@
 'use strict';
 
 const EditorControl = require('./editor-control');
-const TaggedOperation = require('./tagged-operation');
 
 class SocketIoServer {
 	constructor(io, options) {
@@ -53,11 +52,11 @@ class SocketIoServer {
 		const control = this.getEditorControl(id);
 		control.latest()
 			.then(latest => {
-				console.log(latest.operation.toString());
 				socket.join(id);
 
 				socket.emit('load editable', this._toData(control, id, latest));
 			}).catch(e => {
+				// eslint-disable-next-line no-console
 				console.log('Error occured during load', e);
 			});
 	}

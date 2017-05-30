@@ -134,7 +134,6 @@ module.exports = function(left, right) {
 
 	function handleDelete(op1, op2) {
 		const value1 = op1.value;
-		const length1 = value1.length;
 
 		if(op2 instanceof ops.Retain) {
 			/*

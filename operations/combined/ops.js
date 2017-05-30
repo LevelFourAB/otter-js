@@ -16,7 +16,7 @@ class Update {
 	}
 
 	toString() {
-		return "Update{id=" + this.id + ", type=" + this.type + ", operation=" + this.operation + "}";
+		return 'Update{id=' + this.id + ', type=' + this.type + ', operation=' + this.operation + '}';
 	}
 }
 

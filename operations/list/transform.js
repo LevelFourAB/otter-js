@@ -84,7 +84,7 @@ module.exports = function(left, right) {
 		}
 	}
 
-	function handleInsert(op1, op2) {
+	function handleInsert(op1) {
 		const items1 = op1.items;
 		const length1 = items1.length;
 

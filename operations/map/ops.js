@@ -20,7 +20,7 @@ class Set {
 	}
 
 	toString() {
-		return "Set{key=" + this.key + ", oldValue=" + this.oldValue + ", newValue=" + this.newValue + "}";
+		return 'Set{key=' + this.key + ', oldValue=' + this.oldValue + ', newValue=' + this.newValue + '}';
 	}
 }
 

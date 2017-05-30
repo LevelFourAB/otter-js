@@ -101,6 +101,10 @@ class Model {
 		this.editor.performEdit(callback);
 	}
 
+	get undoRedo() {
+		return this.editor.undoRedo;
+	}
+
 	_apply(id, type, op) {
 		// Compose together with the current value for the object
 		if(typeof this.values[id] !== 'undefined') {

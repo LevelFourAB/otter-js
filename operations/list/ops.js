@@ -34,7 +34,7 @@ class Insert {
 	}
 
 	invert() {
-		return Delete(this.items);
+		return new Delete(this.items);
 	}
 
 	toString() {
@@ -55,7 +55,7 @@ class Delete {
 	}
 
 	invert() {
-		return Insert(this.items);
+		return new Insert(this.items);
 	}
 
 	toString() {

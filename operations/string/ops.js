@@ -35,7 +35,7 @@ class Insert {
 	}
 
 	invert() {
-		return Delete(this.value);
+		return new Delete(this.value);
 	}
 
 	toString() {
@@ -56,7 +56,7 @@ class Delete {
 	}
 
 	invert() {
-		return Insert(this.value);
+		return new Insert(this.value);
 	}
 
 	toString() {

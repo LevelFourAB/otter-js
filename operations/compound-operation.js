@@ -20,6 +20,10 @@ class CompoundOperation {
 		this._ops.forEach(op => op.apply(handler));
 	}
 
+	invert() {
+		return new CompoundOperation(this._ops.map(op => op.invert()));
+	}
+
 	/**
 	 * Get the given operation as an array, even if it is not a compound
 	 * operation to start with.

@@ -4,6 +4,7 @@ const OTType = require('../type');
 const compose = require('./compose');
 const transform = require('./transform');
 const serialization = require('./serialization');
+const normalize = require('./normalize');
 
 class ListType extends OTType {
 	constructor() {
@@ -16,6 +17,10 @@ class ListType extends OTType {
 
 	transform(left, right) {
 		return transform(left, right);
+	}
+
+	normalize(op) {
+		return normalize(op);
 	}
 
 	toJSON(op) {

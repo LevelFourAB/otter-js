@@ -2,6 +2,8 @@
 
 const EventEmitter = require('events');
 
+const UndoRedoManager = require('./undo-redo');
+
 const SYNCHRONIZED = 0;
 const AWAITING_CONFIRM = 1;
 const AWAITING_CONFIRM_WITH_BUFFER = 2;
@@ -9,17 +11,11 @@ const AWAITING_CONFIRM_WITH_BUFFER = 2;
 /**
  * Editor for a operational transformation type. The editor synchronizes
  * with other editors via an instance of {@link OperationSync}.
- *
- * Every editor connected needs to have a unique session id, session ids may
- * not be reused. The session id is used internally to create tokens that
- * are used to keep track of what changes are actually remote.
  */
 class Editor {
 	/**
 	 * Create a new editor.
 	 *
-	 * @param id {string}
-	 *   unique session id for this editor
 	 * @param sync {OperationSync}
 	 *   synchronization provider, usually an instance that will send and
 	 *   receive {@link TaggedOperation}s from a central server
@@ -35,6 +31,10 @@ class Editor {
 
 		this.composing = null;
 		this.composeDepth = 0;
+
+		this.undoRedo = new UndoRedoManager({
+			editor: this
+		});
 	}
 
 	connect() {
@@ -175,7 +175,7 @@ class Editor {
 				}
 				break;
 			default:
-				throw 'Unknown state: ' + this.state;
+				throw new Error('Unknown state: ' + this.state);
 		}
 	}
 
@@ -185,7 +185,7 @@ class Editor {
 	 */
 	apply(op) {
 		if(typeof this.parentHistoryId === 'undefined') {
-			throw 'Editor has not been connected';
+			throw new Error('Editor has not been connected');
 		}
 
 		if(this.composeDepth > 0) {
@@ -241,9 +241,10 @@ class Editor {
 				this.buffer.operation = this.type.compose(this.buffer.operation, op);
 				break;
 			default:
-				throw 'Unknown state: ' + this.state;
+				throw new Error('Unknown state: ' + this.state);
 		}
 
+		this.undoRedo.apply(op);
 		this.events.emit('change', {
 			operation: op,
 			local: true
@@ -251,6 +252,8 @@ class Editor {
 	}
 
 	composeAndTriggerListeners(op) {
+		this.undoRedo.receive(op);
+
 		this.current = this.type.compose(this.current, op);
 		this.events.emit('change', {
 			operation: op,

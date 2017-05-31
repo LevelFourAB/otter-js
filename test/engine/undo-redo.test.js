@@ -84,6 +84,31 @@ describe('Editor: UndoRedoManager', function() {
 		expect(applied).to.deep.equal(op);
 	});
 
+	it('Undo + apply disables redo', function() {
+		const m = manager();
+
+		const op = string.delta()
+			.retain(6)
+			.delete('World')
+			.insert('Cookies')
+			.done();
+		m.apply(op);
+
+		m.undo();
+
+		expect(m.canUndo).to.be.false;
+		expect(m.canRedo).to.be.true;
+
+		m.apply(string.delta()
+			.retain(13)
+			.insert('!')
+			.done()
+		);
+
+		expect(m.canUndo).to.be.true;
+		expect(m.canRedo).to.be.false;
+	});
+
 	it('Undo/Redo/Undo without remote', function() {
 		const m = manager();
 

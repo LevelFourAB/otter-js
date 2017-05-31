@@ -2,9 +2,16 @@
 
 Otter is a library to support collaborative realtime editing using
 [Operational Transformation](https://en.wikipedia.org/wiki/Operational_transformation).
-This repository contains the JavaScript-implementation.
+This repository contains the JavaScript-implementation for use both in a browser
+and in a Node-based server.
+
+A [Java-implementation](https://github.com/LevelFourAB/otter-java) is also available.
 
 ## Using Otter
+
+Install via NPM:
+
+`npm install --save otter-js`
 
 Otter consists of three parts, the operations library, the editing engine and
 a high level model. The high level model is what you usually want to use

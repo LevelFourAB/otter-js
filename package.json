@@ -10,6 +10,11 @@
     "test": "node_modules/.bin/mocha test/**/*.test.js && node_modules/.bin/eslint *.js engine/**/*.js model/**/*.js operations/**/*.js",
     "coverage": "node_modules/istanbul/lib/cli.js cover node_modules/mocha/bin/_mocha -- -R spec ./test/**/*.test.js"
   },
+  "keywords": [
+    "ot",
+    "operational transformation",
+    "editing"
+  ],
   "devDependencies": {
     "chai": "^4.0.0",
     "coveralls": "^2.13.1",

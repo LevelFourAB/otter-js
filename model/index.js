@@ -20,7 +20,6 @@ class Model {
 		this.factories = {};
 
 		this.editors = {};
-		this.values = {};
 		this.objects = {};
 
 		this.events = new EventEmitter();
@@ -35,12 +34,7 @@ class Model {
 
 		this._changeHandler = {
 			update: (id, type, change) => {
-				if(typeof this.values[id] !== 'undefined') {
-					const current = this.values[id];
-					const composed = this.type.types[type].compose(current, change);
-
-					this.values[id] = composed;
-
+				if(typeof this.objects[id] !== 'undefined') {
 					const editor = this.editors[id];
 					this.remote = true;
 					editor.apply({
@@ -49,9 +43,7 @@ class Model {
 						remote: true
 					});
 				} else {
-					this.values[id] = change;
-
-					const object = this._createObject(id, type);
+					const object = this._createObject(id, type, change);
 					this.objects[id] = object;
 				}
 			}
@@ -106,16 +98,6 @@ class Model {
 	}
 
 	_apply(id, type, op) {
-		// Compose together with the current value for the object
-		if(typeof this.values[id] !== 'undefined') {
-			const current = this.values[id];
-			const composed = this.type.types[type].compose(current, op);
-
-			this.values[id] = composed;
-		} else {
-			this.values[id] = op;
-		}
-
 		// Ask the object to apply the operation as a local one
 		const editor = this.editors[id];
 		if(editor) {
@@ -150,20 +132,21 @@ class Model {
 		let object = this.objects[id];
 		if(typeof object !== 'undefined') return object;
 
-		this.values[id] = new CompoundOperation([]);
-		object = this._createObject(id, type);
+		object = this._createObject(id, type, new CompoundOperation([]));
 		this.objects[id] = object;
 
 		return object;
 	}
 
-	_createObject(id, type) {
-		let editor = this._createEditor(id, type);
+	_createObject(id, type, op) {
+		let editor = this._createEditor(id, type, op);
 		this.editors[id] = editor;
-		return this.factories[type](editor);
+		let result = this.factories[type](editor);
+		delete editor.current;
+		return result;
 	}
 
-	_createEditor(id, type) {
+	_createEditor(id, type, op) {
 		const self = this;
 		return {
 			objectId: id,
@@ -181,9 +164,7 @@ class Model {
 				self._queueEvent(id, type, data);
 			},
 
-			get current() {
-				return self.values[this.objectId];
-			},
+			current: op,
 
 			send(op) {
 				self._apply(this.objectId, this.objectType, op);

@@ -19,8 +19,8 @@ class Model {
 
 		this.factories = {};
 
-		this.editors = {};
-		this.objects = {};
+		this.editors = new Map();
+		this.objects = new Map();
 
 		this.events = new EventEmitter();
 
@@ -34,8 +34,8 @@ class Model {
 
 		this._changeHandler = {
 			update: (id, type, change) => {
-				if(typeof this.objects[id] !== 'undefined') {
-					const editor = this.editors[id];
+				if(this.objects.has(id)) {
+					const editor = this.editors.get(id);
 					this.remote = true;
 					editor.apply({
 						operation: change,
@@ -44,7 +44,7 @@ class Model {
 					});
 				} else {
 					const object = this._createObject(id, type, change);
-					this.objects[id] = object;
+					this.objects.set(id, object);
 				}
 			}
 		};
@@ -99,7 +99,7 @@ class Model {
 
 	_apply(id, type, op) {
 		// Ask the object to apply the operation as a local one
-		const editor = this.editors[id];
+		const editor = this.editors.get(id);
 		if(editor) {
 			this.remote = false;
 			editor.apply({
@@ -124,23 +124,23 @@ class Model {
 	}
 
 	_queueEvent(id, type, data) {
-		const editor = this.editors[id];
+		const editor = this.editors.get(id);
 		editor.events.emit(type, new events.Event(this.remote, data));
 	}
 
 	_getObject(id, type) {
-		let object = this.objects[id];
+		let object = this.objects.get(id);
 		if(typeof object !== 'undefined') return object;
 
 		object = this._createObject(id, type, new CompoundOperation([]));
-		this.objects[id] = object;
+		this.objects.set(id, object);
 
 		return object;
 	}
 
 	_createObject(id, type, op) {
 		let editor = this._createEditor(id, type, op);
-		this.editors[id] = editor;
+		this.editors.set(id, editor);
 		let result = this.factories[type](editor);
 		delete editor.current;
 		return result;

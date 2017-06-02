@@ -10,6 +10,7 @@ const compose = require('./compose');
 const transform = require('./transform');
 const serialization = require('./serialization');
 const normalize = require('./normalize');
+const find = require('./find');
 
 class CombinedType extends OTType {
 	constructor() {
@@ -53,6 +54,10 @@ class CombinedType extends OTType {
 
 	fromJSON(json) {
 		return serialization.fromJSON(this.types, json);
+	}
+
+	find(op, id) {
+		return find(op, id);
 	}
 }
 

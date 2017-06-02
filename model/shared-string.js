@@ -89,7 +89,6 @@ class SharedString extends SharedObject {
 		if(this.value === value) return;
 
 		const delta = string.delta();
-		let index = 0;
 		diff(this.value, value).forEach(d => {
 			switch(d[0]) {
 				case diff.EQUAL:

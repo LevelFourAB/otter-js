@@ -3,10 +3,7 @@
 const OperationIterator = require('../iterator');
 const CompoundOperation = require('../compound-operation');
 const ops = require('./ops');
-
-function idComparator(a, b) {
-	return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
-}
+const idComparator = require('./idComparator');
 
 /**
  * Main transformation for the combined type. This will sort operations

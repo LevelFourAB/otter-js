@@ -2,6 +2,7 @@
 
 const CompoundOperation = require('../compound-operation');
 const ops = require('./ops');
+const idComparator = require('./idComparator');
 
 class UpdateDelta {
 	constructor() {
@@ -27,6 +28,7 @@ class UpdateDelta {
 			result.push(value);
 		}
 
+		result.sort(idComparator);
 		return new CompoundOperation(result);
 	}
 }

@@ -10,6 +10,8 @@ const SharedString = require('./shared-string');
 const CompoundOperation = require('../operations/compound-operation');
 const combined = require('../operations/combined');
 
+const HLRU = require('hashlru');
+
 class Model {
 	constructor(editor) {
 		this.editor = editor;
@@ -19,8 +21,8 @@ class Model {
 
 		this.factories = {};
 
-		this.editors = new Map();
-		this.objects = new Map();
+		this.cache = new HLRU(1000);
+		this.refs = new Map();
 
 		this.events = new EventEmitter();
 
@@ -34,17 +36,14 @@ class Model {
 
 		this._changeHandler = {
 			update: (id, type, change) => {
-				if(this.objects.has(id)) {
-					const editor = this.editors.get(id);
+				const ref = this._findRef(id);
+				if(ref) {
 					this.remote = true;
-					editor.apply({
+					ref.editor.apply({
 						operation: change,
 						local: false,
 						remote: true
 					});
-				} else {
-					const object = this._createObject(id, type, change);
-					this.objects.set(id, object);
 				}
 			}
 		};
@@ -54,6 +53,7 @@ class Model {
 		this.registerType('string', e => new SharedString(e));
 
 		this.root = this._getObject('root', 'map');
+		this.refs.set(this.cache.get('root'));
 		this.root.on('valueChanged', data => this.events.emit('valueChanged', data));
 		this.root.on('valueRemoved', data => this.events.emit('valueRemove', data));
 	}
@@ -99,16 +99,16 @@ class Model {
 
 	_apply(id, type, op) {
 		// Ask the object to apply the operation as a local one
-		const editor = this.editors.get(id);
-		if(editor) {
+		const ref = this._findRef(id);
+		if(ref) {
 			this.remote = false;
-			editor.apply({
+			ref.editor.apply({
 				operation: op,
 				local: true,
 				remote: false
 			});
 
-			editor.queueEvent('change', op);
+			ref.editor.queueEvent('change', op);
 		}
 
 		// Ask the editor to apply the operation and sync it with other editors
@@ -119,40 +119,114 @@ class Model {
 	}
 
 	getObject(id) {
-		let object = this.objects[id];
-		return object || null;
+		return this._getObject(id, null, false);
 	}
 
 	_queueEvent(id, type, data) {
-		const editor = this.editors.get(id);
-		editor.events.emit(type, new events.Event(this.remote, data));
+		const ref = this._findRef(id);
+		if(! ref) return;
+
+		ref.editor.events.emit(type, new events.Event(this.remote, data));
 	}
 
-	_getObject(id, type) {
-		let object = this.objects.get(id);
-		if(typeof object !== 'undefined') return object;
-
-		object = this._createObject(id, type, new CompoundOperation([]));
-		this.objects.set(id, object);
-
-		return object;
+	_findRef(id) {
+		return this.refs.get(id) || this.cache.get(id);
 	}
 
-	_createObject(id, type, op) {
-		let editor = this._createEditor(id, type, op);
-		this.editors.set(id, editor);
-		let result = this.factories[type](editor);
-		delete editor.current;
-		return result;
+	_getObject(id, type, create=true) {
+		// Find the object if it is referenced or cached
+		let ref = this._findRef(id);
+		if(ref) return ref.proxy;
+
+		return this._createObject(id, type, create);
+	}
+
+	_createObject(id, type, createIfNonExistent) {
+
+		// Function to create a new instance
+		const create = () =>  {
+			// Find the current operation of this object
+			let op = this.editor.current ? this.type.find(this.editor.current, id) : null;
+
+			if(op || createIfNonExistent) {
+				// If there is an op or we should auto-create resolve everything
+				const editor = this._createEditor(
+					id,
+					type || op.type,
+					(op && op.operation) || new CompoundOperation([])
+				);
+				const result = this.factories[type](editor);
+				editor.current = null;
+				return { object: result, editor: editor };
+			} else {
+				return null;
+			}
+		};
+
+		// Find or create this object
+		const find = proxy => {
+			let ref = this._findRef(id);
+			if(ref) return ref;
+
+			ref = create();
+			ref.proxy = proxy;
+			ref.editor.ref = ref;
+			this.cache.set(id, ref);
+			return ref;
+		};
+
+		const proxy = new Proxy({}, {
+			get: function(target, name) {
+				return find(proxy).object[name];
+			}
+		});
+
+		if(createIfNonExistent) {
+			// Non-existent object can just resolve
+			return proxy;
+		} else {
+			// Need to check if we the object actually exists
+			let ref = find(proxy);
+			return ref ? ref.proxy : null;
+		}
 	}
 
 	_createEditor(id, type, op) {
 		const self = this;
-		return {
+		const events = new EventEmitter();
+		let editor;
+
+		if(id !== 'root') {
+			// Automatically handle referencing of this object when listeners change
+			let listenerCount = 0;
+			events.on('removeEventListener', () => {
+				if(--listenerCount === 0) {
+					this.refs.delete(id);
+				}
+			});
+
+			events.on('addListener', () => {
+				if(listenerCount++ === 0) {
+					this.refs.set(id, editor.ref);
+				}
+			});
+		}
+
+		return editor = {
 			objectId: id,
 			objectType: type,
 
-			events: new EventEmitter(),
+			events: {
+				addListener: function(eventName, listener) {
+					events.addListener(eventName, listener);
+				},
+
+				removeListener: function(eventName, listener) {
+					events.removeListener(eventName, listener);
+				},
+
+				emit: events.emit.bind(events)
+			},
 
 			model: self,
 

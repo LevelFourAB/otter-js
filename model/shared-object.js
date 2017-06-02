@@ -18,7 +18,7 @@ class SharedObject {
 	}
 
 	on(event, listener) {
-		this.editor.events.on(event, listener);
+		this.editor.events.addListener(event, listener);
 		return this;
 	}
 

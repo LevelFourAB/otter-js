@@ -25,7 +25,7 @@ class MapType extends OTType {
 
 	simplify(op) {
 		op.operations.forEach(subOp => {
-			delete subOp.oldValue;
+			if(subOp.oldValue) delete subOp.oldValue;
 		});
 		return op;
 	}

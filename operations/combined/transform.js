@@ -74,8 +74,6 @@ module.exports = function(types, left, right) {
 		deltaRight.push(it2.next());
 	}
 
-	deltaLeft.sort(idComparator);
-	deltaRight.sort(idComparator);
 	return {
 		left: new CompoundOperation(deltaLeft),
 		right: new CompoundOperation(deltaRight)

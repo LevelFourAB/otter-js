@@ -3,6 +3,8 @@
 const ops = require('./ops');
 const CompoundOperation = require('../compound-operation');
 
+const keyComparator = require('./keyComparator');
+
 /**
  * Helper for building a delta over a map.
  */
@@ -64,6 +66,7 @@ class MapDelta {
 			result.push(new ops.Set(key, value.oldValue, value.newValue));
 		}
 
+		result.sort(keyComparator);
 		return new CompoundOperation(result);
 	}
 }

@@ -4,16 +4,14 @@ const OperationIterator = require('../iterator');
 const CompoundOperation = require('../compound-operation');
 const ops = require('./ops');
 
-function keyComparator(a, b) {
-	return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0);
-}
+const keyComparator = require('./keyComparator');
 
 /**
  * Compose two operations on a map.
  */
 module.exports = function(left, right) {
-	const it1 = new OperationIterator(left, keyComparator);
-	const it2 = new OperationIterator(right, keyComparator);
+	const it1 = new OperationIterator(left);
+	const it2 = new OperationIterator(right);
 
 	const result = [];
 
@@ -59,6 +57,5 @@ module.exports = function(left, right) {
 		result.push(it2.next());
 	}
 
-	result.sort(keyComparator);
 	return new CompoundOperation(result);
 };

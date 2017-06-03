@@ -10,11 +10,8 @@ const CompoundOperation = require('./compound-operation');
  * or going back to handle an operation again.
  */
 class OperationIterator {
-	constructor(op, comparator) {
+	constructor(op) {
 		let ops = CompoundOperation.asArray(op);
-		if(comparator) {
-			ops.sort(comparator);
-		}
 
 		this.index = 0;
 		this._ops = ops;

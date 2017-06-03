@@ -69,6 +69,5 @@ module.exports = function(types, left, right) {
 		result.push(it2.next());
 	}
 
-	result.sort(idComparator);
 	return new CompoundOperation(result);
 };

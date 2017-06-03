@@ -1,7 +1,5 @@
 'use strict';
 
-const SharedObject = require('./shared-object');
-
 /**
  * Convert from a data value into a value usable in the model API.
  */
@@ -26,7 +24,7 @@ exports.fromData = function(editor, data) {
 exports.toData = function(value) {
 	if(typeof value === 'undefined') return null;
 
-	if(value instanceof SharedObject) {
+	if(value && value.objectType && value.objectId) {
 		return [ 'ref', value.objectId, value.objectType ];
 	} else {
 		return [ 'value', value ];

@@ -19,6 +19,7 @@ class Model {
 
 		this._lastObjectId = 0;
 
+		this.proxyRef = {};
 		this.factories = {};
 
 		this.cache = new HLRU(1000);
@@ -175,7 +176,7 @@ class Model {
 			return ref;
 		};
 
-		const proxy = new Proxy({}, {
+		const proxy = new Proxy(this.proxyRef, {
 			get: function(target, name) {
 				return find(proxy).object[name];
 			}

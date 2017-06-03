@@ -48,6 +48,14 @@ class CombinedType extends OTType {
 		return normalize(this.types, op);
 	}
 
+	simplify(op) {
+		op.operations.forEach(subOp => {
+			let type = this.types[subOp.type];
+			subOp.operation = type.simplify(subOp.operation);
+		});
+		return op;
+	}
+
 	toJSON(op) {
 		return serialization.toJSON(this.types, op);
 	}

@@ -46,7 +46,7 @@ class Editor {
 
 				this.sync.addEventListener('change', this.receive.bind(this));
 
-				return initial.operation;
+				return this.current;
 			});
 	}
 
@@ -200,7 +200,7 @@ class Editor {
 		}
 
 		// Compose together with the current operation
-		this.current = this.type.compose(this.current, op);
+		this.current = this.type.simplify(this.type.compose(this.current, op));
 
 		let tagged;
 		switch(this.state) {
@@ -254,7 +254,7 @@ class Editor {
 	composeAndTriggerListeners(op) {
 		this.undoRedo.receive(op);
 
-		this.current = this.type.compose(this.current, op);
+		this.current = this.type.simplify(this.type.compose(this.current, op));
 		this.events.emit('change', {
 			operation: op,
 			local: false

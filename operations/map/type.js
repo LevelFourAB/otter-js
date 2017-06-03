@@ -23,6 +23,13 @@ class MapType extends OTType {
 		return normalize(op);
 	}
 
+	simplify(op) {
+		op.operations.forEach(subOp => {
+			delete subOp.oldValue;
+		});
+		return op;
+	}
+
 	toJSON(op) {
 		return serialization.toJSON(op);
 	}

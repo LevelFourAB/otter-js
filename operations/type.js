@@ -7,8 +7,16 @@ class OTType {
 		return new Composer(this);
 	}
 
+	normalize(op) {
+		return op;
+	}
+
 	invert(op) {
 		return this.normalize(op.invert());
+	}
+
+	simplify(op) {
+		return op;
 	}
 }
 

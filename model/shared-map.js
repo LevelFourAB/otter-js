@@ -9,7 +9,7 @@ class SharedMap extends SharedObject {
 	constructor(editor) {
 		super(editor);
 
-		this.values = {};
+		this.values = new Map();
 
 		this._apply({
 			operation: editor.current
@@ -20,8 +20,8 @@ class SharedMap extends SharedObject {
 	_apply(data) {
 		data.operation.apply({
 			remove: (id, oldValue) => {
-				const old = this.values[id];
-				delete this.values[id];
+				const old = this.values.get(id);
+				this.values.delete(id);
 
 				this.editor.queueEvent('valueRemoved', {
 					key: id,
@@ -31,8 +31,8 @@ class SharedMap extends SharedObject {
 
 			set: (id, oldValue, newValue) => {
 				const value = dataValues.fromData(this.editor, newValue);
-				const old = this.values[id];
-				this.values[id] = value;
+				const old = this.values.get(id);
+				this.values.set(id, value);
 
 				this.editor.queueEvent('valueChanged', {
 					key: id,
@@ -48,13 +48,13 @@ class SharedMap extends SharedObject {
 	}
 
 	get(key, factory) {
-		let value = this.values[key];
+		let value = this.values.get(key);
 		if(value) return value;
 
 		if(factory) {
 			const model = this.editor.model;
 			model.performEdit(() => {
-				value = this.values[key] = factory(model);
+				this.values.set(key, value = factory(model));
 
 				this.editor.send(map.delta()
 					.set(key, dataValues.toData(null), dataValues.toData(value))
@@ -67,7 +67,7 @@ class SharedMap extends SharedObject {
 	}
 
 	remove(key) {
-		const old = this.values[key];
+		const old = this.values.get(key);
 		if(typeof old !== 'undefined') {
 			this.editor.send(map.delta()
 				.set(key, dataValues.toData(null))
@@ -80,7 +80,7 @@ class SharedMap extends SharedObject {
 			throw new Error('Value must not be null or undefined');
 		}
 
-		const old = this.values[key];
+		const old = this.values.get(key);
 		this.editor.send(map.delta()
 			.set(key, dataValues.toData(old), dataValues.toData(value))
 			.done()

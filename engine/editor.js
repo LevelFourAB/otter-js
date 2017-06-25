@@ -83,6 +83,11 @@ class Editor {
 			case SYNCHRONIZED:
 				this.parentHistoryId = op.historyId;
 				this.composeAndTriggerListeners(op.operation);
+
+				this.events.emit('state', {
+					state: 'synchronized',
+					historyId: op.historyId
+				});
 				break;
 			case AWAITING_CONFIRM:
 				if(this.lastSent.token === op.token) {
@@ -93,6 +98,11 @@ class Editor {
 					 */
 					this.parentHistoryId = op.historyId;
 					this.state = SYNCHRONIZED;
+
+					this.events.emit('state', {
+						state: 'synchronized',
+						historyId: op.historyId
+					});
 				} else {
 					/*
 					 * Someone else has edited the document before our own
@@ -218,6 +228,10 @@ class Editor {
 				this.state = AWAITING_CONFIRM;
 				this.lastSent = tagged;
 				this.sync.send(tagged);
+
+				this.events.emit('state', {
+					state: 'saving'
+				});
 				break;
 			case AWAITING_CONFIRM:
 				/*

@@ -49,6 +49,8 @@ class Model {
 			}
 		};
 
+		editor.addEventListener('state', e => this.events.emit('state', e));
+
 		this.registerType('map', e => new SharedMap(e));
 		this.registerType('list', e => new SharedList(e));
 		this.registerType('string', e => new SharedString(e));

@@ -92,6 +92,10 @@ class Model {
 		this.editor.close();
 	}
 
+	get historyId() {
+		return this.editor.parentHistoryId;
+	}
+
 	performEdit(callback) {
 		this.editor.performEdit(callback);
 	}

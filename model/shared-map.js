@@ -63,7 +63,7 @@ class SharedMap extends SharedObject {
 			});
 		}
 
-		return value || null;
+		return typeof value !== 'undefined' ? value : null;
 	}
 
 	remove(key) {

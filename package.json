@@ -21,7 +21,7 @@
     "eslint": "^3.19.0",
     "eslint-plugin-node": "^4.2.2",
     "istanbul": "^0.4.5",
-    "mocha": "^3.4.2",
+    "mocha": "^6.2.1",
     "socket.io": "^1.4.8",
     "socket.io-client": "^1.4.8",
     "webpack-stream": "^3.2.0"
